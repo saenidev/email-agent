@@ -27,13 +27,14 @@ def get_flow() -> Flow:
     return flow
 
 
-def get_authorization_url() -> str:
+def get_authorization_url(state: str | None = None) -> str:
     """Get the Gmail OAuth authorization URL."""
     flow = get_flow()
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="consent",
+        state=state,
     )
     return auth_url
 

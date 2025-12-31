@@ -193,6 +193,7 @@ async def refresh_gmail_tokens(ctx: dict) -> dict:
     """Refresh expiring Gmail tokens."""
     from datetime import datetime, timedelta, timezone
 
+    from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
 
     from app.config import get_settings
@@ -218,8 +219,8 @@ async def refresh_gmail_tokens(ctx: dict) -> dict:
                     client_secret=settings.gmail_client_secret,
                 )
 
-                # Force refresh
-                credentials.refresh(None)
+                # Force refresh with proper Request object
+                credentials.refresh(Request())
 
                 # Update token
                 token.access_token_encrypted = encrypt_token(credentials.token)
