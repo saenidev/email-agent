@@ -38,10 +38,10 @@ make install
 
 ```bash
 # Create .env file from template
-cp backend/.env.example backend/.env
+cp apps/api/.env.example apps/api/.env
 ```
 
-Edit `backend/.env` with your credentials:
+Edit `apps/api/.env` with your credentials:
 
 ```env
 # Database (default works with docker-compose)
@@ -55,7 +55,7 @@ TOKEN_ENCRYPTION_KEY=your-fernet-key-here
 # Gmail OAuth (see setup below)
 GMAIL_CLIENT_ID=xxx.apps.googleusercontent.com
 GMAIL_CLIENT_SECRET=xxx
-GMAIL_REDIRECT_URI=http://localhost:8000/api/v1/gmail/auth/callback
+GMAIL_REDIRECT_URI=http://localhost:8001/api/v1/gmail/auth/callback
 
 # OpenRouter
 OPENROUTER_API_KEY=sk-or-v1-xxx
@@ -72,9 +72,9 @@ make db-up
 make migrate
 
 # In separate terminals:
-make backend   # Terminal 1: FastAPI on :8000
-make frontend  # Terminal 2: Next.js on :3000
-make worker    # Terminal 3: Background email polling
+make api      # Terminal 1: FastAPI on :8001
+make web      # Terminal 2: Next.js on :3000 (or: pnpm dev)
+make worker   # Terminal 3: Background email polling
 ```
 
 ### 4. Use the App
@@ -100,7 +100,7 @@ make worker    # Terminal 3: Background email polling
 6. Go to **APIs & Services** → **Credentials**
    - Click **Create Credentials** → **OAuth client ID**
    - Application type: **Web application**
-   - Add redirect URI: `http://localhost:8000/api/v1/gmail/auth/callback`
+   - Add redirect URI: `http://localhost:8001/api/v1/gmail/auth/callback`
 7. Copy Client ID and Secret to your `.env`
 
 ## Development
@@ -110,11 +110,11 @@ make worker    # Terminal 3: Background email polling
 ```bash
 make help       # Show all commands
 make dev        # Instructions for starting all services
-make backend    # Start FastAPI with hot reload
-make frontend   # Start Next.js dev server
+make api        # Start FastAPI with hot reload
+make web        # Start Next.js dev server (or: pnpm dev)
 make worker     # Start ARQ background worker
 make test       # Run pytest
-make lint       # Run linters (ruff)
+make lint       # Run linters (ruff + eslint)
 make migrate    # Apply database migrations
 make migrate-new msg="add feature"  # Create new migration
 make db-down    # Stop database containers
@@ -124,34 +124,39 @@ make db-down    # Stop database containers
 
 ```
 email-agent/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/          # FastAPI routes
-│   │   ├── models/          # SQLAlchemy models
-│   │   ├── schemas/         # Pydantic schemas
-│   │   ├── services/        # Business logic
-│   │   │   ├── email_processor.py   # Main orchestration
-│   │   │   ├── gmail_service.py     # Gmail API
-│   │   │   ├── openrouter_service.py # LLM calls
-│   │   │   └── rule_engine.py       # Rule evaluation
-│   │   └── workers/         # ARQ background tasks
-│   └── alembic/             # Database migrations
-├── frontend/
-│   ├── app/
-│   │   ├── dashboard/       # Main app pages
-│   │   ├── login/           # Auth pages
-│   │   └── register/
-│   └── lib/
-│       └── api.ts           # API client
-└── docker-compose.yml       # PostgreSQL + Redis
+├── apps/
+│   ├── api/                    # Python/FastAPI backend
+│   │   ├── app/
+│   │   │   ├── api/v1/         # FastAPI routes
+│   │   │   ├── models/         # SQLAlchemy models
+│   │   │   ├── schemas/        # Pydantic schemas
+│   │   │   ├── services/       # Business logic
+│   │   │   │   ├── email_processor.py   # Main orchestration
+│   │   │   │   ├── gmail_service.py     # Gmail API
+│   │   │   │   ├── openrouter_service.py # LLM calls
+│   │   │   │   └── rule_engine.py       # Rule evaluation
+│   │   │   └── workers/        # ARQ background tasks
+│   │   └── alembic/            # Database migrations
+│   └── web/                    # Next.js frontend
+│       ├── app/
+│       │   ├── dashboard/      # Main app pages
+│       │   ├── login/          # Auth pages
+│       │   └── register/
+│       └── lib/
+│           └── api.ts          # API client
+├── packages/                   # Shared packages (future)
+├── turbo.json                  # Turborepo config
+├── pnpm-workspace.yaml         # pnpm workspaces
+└── docker-compose.yml          # PostgreSQL + Redis
 ```
 
 ### Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Python 3.11+ / FastAPI / SQLAlchemy (async) |
-| Frontend | Next.js 14 / React / Tailwind CSS |
+| Monorepo | Turborepo + pnpm workspaces |
+| API | Python 3.11+ / FastAPI / SQLAlchemy (async) |
+| Web | Next.js 14 / React / Tailwind CSS |
 | Database | PostgreSQL |
 | Queue | ARQ + Redis |
 | LLM | OpenRouter API |
@@ -180,7 +185,7 @@ email-agent/
 ```
 ┌─────────────┐     ┌─────────────┐     ┌──────────────┐
 │   Next.js   │────▶│   FastAPI   │────▶│  PostgreSQL  │
-│  Dashboard  │     │   Backend   │     │   Database   │
+│  Dashboard  │     │     API     │     │   Database   │
 └─────────────┘     └─────────────┘     └──────────────┘
                            │
               ┌────────────┼────────────┐

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Email Agent is an AI-powered email assistant that connects to Gmail, reads emails, and automatically drafts/sends responses using OpenRouter LLMs. It has a Python/FastAPI backend and Next.js frontend.
+Email Agent is an AI-powered email assistant that connects to Gmail, reads emails, and automatically drafts/sends responses using OpenRouter LLMs. It's a Turborepo monorepo with a Python/FastAPI backend and Next.js frontend.
 
 ## Common Commands
 
@@ -15,11 +15,11 @@ make db-up
 # Run database migrations
 make migrate
 
-# Start backend (port 8000)
-make backend
+# Start API backend (port 8001)
+make api
 
-# Start frontend (port 3000)
-make frontend
+# Start web frontend (port 3000)
+make web    # or: pnpm dev
 
 # Start ARQ background worker
 make worker
@@ -34,11 +34,23 @@ make lint
 make migrate-new msg="description"
 ```
 
-**Note**: Use `pnpm` for frontend, `uv` for backend.
+**Note**: Use `pnpm` for JS/Turborepo, `uv` for Python.
 
 ## Architecture
 
-### Backend (`backend/`)
+### Monorepo Structure
+
+```
+email-agent/
+├── apps/
+│   ├── api/          # Python/FastAPI backend
+│   └── web/          # Next.js frontend
+├── packages/         # Shared packages (future)
+├── turbo.json        # Turborepo config
+└── pnpm-workspace.yaml
+```
+
+### API (`apps/api/`)
 
 FastAPI app with async SQLAlchemy. Key services:
 
@@ -50,9 +62,9 @@ FastAPI app with async SQLAlchemy. Key services:
 
 API routes in `app/api/v1/`: auth, emails, drafts, rules, settings, gmail
 
-### Frontend (`frontend/`)
+### Web (`apps/web/`)
 
-Next.js 14 App Router with Tailwind CSS. API calls proxy through Next.js rewrites to backend at `:8000`.
+Next.js 14 App Router with Tailwind CSS. API calls proxy through Next.js rewrites to backend at `:8001`.
 
 - **`app/dashboard/`** - Main app pages (emails, drafts, rules, settings, activity)
 - **`lib/api.ts`** - Axios client with JWT auth interceptor
@@ -76,16 +88,16 @@ Next.js 14 App Router with Tailwind CSS. API calls proxy through Next.js rewrite
 
 | File | Purpose |
 |------|---------|
-| `backend/app/services/email_processor.py` | Main processing pipeline |
-| `backend/app/config.py` | Environment settings (Pydantic) |
-| `backend/app/models/` | SQLAlchemy models (User, Email, Draft, Rule) |
-| `frontend/lib/api.ts` | API client functions |
-| `frontend/next.config.js` | API proxy rewrite to backend |
+| `apps/api/app/services/email_processor.py` | Main processing pipeline |
+| `apps/api/app/config.py` | Environment settings (Pydantic) |
+| `apps/api/app/models/` | SQLAlchemy models (User, Email, Draft, Rule) |
+| `apps/web/lib/api.ts` | API client functions |
+| `apps/web/next.config.js` | API proxy rewrite to backend |
 | `docker-compose.yml` | PostgreSQL + Redis |
 
 ## Environment Setup
 
-Backend requires `.env` with:
+API requires `apps/api/.env` with:
 - `DATABASE_URL` - PostgreSQL async URL
 - `REDIS_URL` - Redis connection
 - `SECRET_KEY` / `TOKEN_ENCRYPTION_KEY` - Security keys

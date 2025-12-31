@@ -1,5 +1,5 @@
 [project]
-name = "email-agent"
+name = "email-agent-api"
 version = "0.1.0"
 description = "AI-powered Gmail email agent with web dashboard"
 requires-python = ">=3.11"
