@@ -4,48 +4,86 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    /* Warm ivory/cream palette */
+    --background: 45 20% 98%;
+    --foreground: 24 10% 15%;
+    --card: 40 25% 97%;
+    --card-foreground: 24 10% 15%;
+    --popover: 40 25% 97%;
+    --popover-foreground: 24 10% 15%;
+
+    /* Terracotta primary */
+    --primary: 18 55% 52%;
+    --primary-foreground: 40 25% 98%;
+
+    /* Warm stone secondary */
+    --secondary: 35 15% 93%;
+    --secondary-foreground: 24 10% 25%;
+
+    /* Muted warm grays */
+    --muted: 35 12% 92%;
+    --muted-foreground: 24 8% 45%;
+
+    /* Subtle warm accent */
+    --accent: 35 20% 94%;
+    --accent-foreground: 24 10% 20%;
+
+    /* Soft red for destructive */
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Warm borders */
+    --border: 35 15% 88%;
+    --input: 35 15% 88%;
+    --ring: 18 55% 52%;
+
+    /* Generous radius for soft feel */
+    --radius: 0.75rem;
+
+    /* Status colors */
+    --success: 142 55% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 24 10% 15%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Deep warm charcoal */
+    --background: 24 10% 10%;
+    --foreground: 40 15% 92%;
+    --card: 24 10% 13%;
+    --card-foreground: 40 15% 92%;
+    --popover: 24 10% 13%;
+    --popover-foreground: 40 15% 92%;
+
+    /* Muted terracotta for dark mode */
+    --primary: 18 45% 55%;
+    --primary-foreground: 24 10% 10%;
+
+    /* Dark warm stone */
+    --secondary: 24 8% 18%;
+    --secondary-foreground: 40 15% 85%;
+
+    /* Dark muted */
+    --muted: 24 8% 18%;
+    --muted-foreground: 35 10% 55%;
+
+    /* Dark accent */
+    --accent: 24 10% 16%;
+    --accent-foreground: 40 15% 90%;
+
+    /* Dark destructive */
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Dark borders */
+    --border: 24 8% 20%;
+    --input: 24 8% 20%;
+    --ring: 18 45% 55%;
+
+    /* Dark status colors */
+    --success: 142 45% 38%;
+    --warning: 38 80% 45%;
   }
 }
 
@@ -53,7 +91,133 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Subtle grain texture for warmth */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.015;
+    z-index: 9999;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+
+  .dark body::before {
+    opacity: 0.03;
   }
 }
+
+@layer components {
+  /* Smooth transitions for interactive elements */
+  .transition-soft {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Warm shadow for cards */
+  .shadow-warm {
+    box-shadow:
+      0 1px 3px 0 rgba(120, 90, 70, 0.04),
+      0 4px 12px 0 rgba(120, 90, 70, 0.06);
+  }
+
+  .dark .shadow-warm {
+    box-shadow:
+      0 1px 3px 0 rgba(0, 0, 0, 0.15),
+      0 4px 12px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Larger shadow for elevated elements */
+  .shadow-warm-lg {
+    box-shadow:
+      0 2px 6px 0 rgba(120, 90, 70, 0.05),
+      0 8px 24px 0 rgba(120, 90, 70, 0.08);
+  }
+
+  .dark .shadow-warm-lg {
+    box-shadow:
+      0 2px 6px 0 rgba(0, 0, 0, 0.2),
+      0 8px 24px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Soft focus ring */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Status badge styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-pending {
+    @apply bg-warning/15 text-warning dark:bg-warning/20;
+  }
+
+  .badge-approved {
+    @apply bg-primary/15 text-primary dark:bg-primary/20;
+  }
+
+  .badge-sent {
+    @apply bg-success/15 text-success dark:bg-success/20;
+  }
+
+  .badge-rejected {
+    @apply bg-destructive/15 text-destructive dark:bg-destructive/20;
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+@layer utilities {
+  .scrollbar-warm {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-warm::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-warm::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-warm::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  .scrollbar-warm::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+}
+
+/* Staggered animation utility */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+}
+
+/* Animation delays for staggered effects */
+.delay-75 { animation-delay: 75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-225 { animation-delay: 225ms; }
+.delay-300 { animation-delay: 300ms; }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, AlertCircle, Zap, Mail, Ban } from "lucide-react";
 import Link from "next/link";
 import { rulesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -24,9 +24,27 @@ const operators = [
 ];
 
 const actions = [
-  { id: "auto_respond", name: "Auto Respond", description: "Automatically send AI response" },
-  { id: "draft_only", name: "Draft Only", description: "Create draft for review" },
-  { id: "ignore", name: "Ignore", description: "Skip processing this email" },
+  {
+    id: "auto_respond",
+    name: "Auto Respond",
+    description: "Automatically send AI response",
+    icon: Zap,
+    color: "bg-success/10 text-success",
+  },
+  {
+    id: "draft_only",
+    name: "Draft Only",
+    description: "Create draft for review",
+    icon: Mail,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    id: "ignore",
+    name: "Ignore",
+    description: "Skip processing this email",
+    icon: Ban,
+    color: "bg-muted text-muted-foreground",
+  },
 ];
 
 interface Condition {
@@ -62,7 +80,11 @@ export default function NewRulePage() {
     }
   };
 
-  const updateCondition = (index: number, field: keyof Condition, value: string) => {
+  const updateCondition = (
+    index: number,
+    field: keyof Condition,
+    value: string
+  ) => {
     setConditions(
       conditions.map((c, i) => (i === index ? { ...c, [field]: value } : c))
     );
@@ -115,53 +137,72 @@ export default function NewRulePage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
         <Link
           href="/dashboard/rules"
-          className="p-2 hover:bg-accent rounded-md"
+          className="p-2.5 hover:bg-accent rounded-xl transition-soft"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-2xl font-bold">New Automation Rule</h1>
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            New Rule
+          </h1>
+          <p className="text-muted-foreground mt-0.5">
+            Create an automation rule for your emails
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {error && (
-          <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+          <div className="flex items-center gap-2 p-4 text-sm text-destructive bg-destructive/10 rounded-xl animate-fade-in">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
         )}
 
         {/* Basic Info */}
-        <div className="space-y-4">
+        <div className="bg-card rounded-2xl shadow-warm border border-border p-5 space-y-4">
+          <h2 className="font-display text-lg font-semibold">Basic Info</h2>
+
           <div>
-            <label className="block text-sm font-medium mb-1">Rule Name</label>
+            <label className="block text-sm font-medium mb-1.5">
+              Rule Name
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Auto-respond to support emails"
-              className="w-full px-3 py-2 border rounded-md bg-background"
+              className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Description (optional)
+            <label className="block text-sm font-medium mb-1.5">
+              Description{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What does this rule do?"
-              className="w-full px-3 py-2 border rounded-md bg-background"
+              className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Priority (lower = higher priority)
+            <label className="block text-sm font-medium mb-1.5">
+              Priority{" "}
+              <span className="text-muted-foreground font-normal">
+                (lower = higher priority)
+              </span>
             </label>
             <input
               type="number"
@@ -169,19 +210,19 @@ export default function NewRulePage() {
               onChange={(e) => setPriority(parseInt(e.target.value) || 100)}
               min={1}
               max={1000}
-              className="w-32 px-3 py-2 border rounded-md bg-background"
+              className="w-32 px-3.5 py-2.5 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft"
             />
           </div>
         </div>
 
         {/* Conditions */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium">Conditions</label>
+        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-semibold">Conditions</h2>
             <select
               value={groupOperator}
               onChange={(e) => setGroupOperator(e.target.value as "AND" | "OR")}
-              className="px-2 py-1 text-sm border rounded-md bg-background"
+              className="px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-soft"
             >
               <option value="AND">Match ALL conditions</option>
               <option value="OR">Match ANY condition</option>
@@ -190,11 +231,16 @@ export default function NewRulePage() {
 
           <div className="space-y-3">
             {conditions.map((condition, index) => (
-              <div key={index} className="flex items-center gap-2">
+              <div
+                key={index}
+                className="flex items-center gap-2 p-3 bg-accent/50 rounded-xl"
+              >
                 <select
                   value={condition.field}
-                  onChange={(e) => updateCondition(index, "field", e.target.value)}
-                  className="px-3 py-2 border rounded-md bg-background"
+                  onChange={(e) =>
+                    updateCondition(index, "field", e.target.value)
+                  }
+                  className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-soft"
                 >
                   {fields.map((f) => (
                     <option key={f.id} value={f.id}>
@@ -205,8 +251,10 @@ export default function NewRulePage() {
 
                 <select
                   value={condition.operator}
-                  onChange={(e) => updateCondition(index, "operator", e.target.value)}
-                  className="px-3 py-2 border rounded-md bg-background"
+                  onChange={(e) =>
+                    updateCondition(index, "operator", e.target.value)
+                  }
+                  className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-soft"
                 >
                   {operators.map((o) => (
                     <option key={o.id} value={o.id}>
@@ -218,16 +266,18 @@ export default function NewRulePage() {
                 <input
                   type="text"
                   value={condition.value}
-                  onChange={(e) => updateCondition(index, "value", e.target.value)}
+                  onChange={(e) =>
+                    updateCondition(index, "value", e.target.value)
+                  }
                   placeholder="Value..."
-                  className="flex-1 px-3 py-2 border rounded-md bg-background"
+                  className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-soft"
                 />
 
                 <button
                   type="button"
                   onClick={() => removeCondition(index)}
                   disabled={conditions.length === 1}
-                  className="p-2 text-destructive hover:bg-destructive/10 rounded-md disabled:opacity-30"
+                  className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-soft disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -238,7 +288,7 @@ export default function NewRulePage() {
           <button
             type="button"
             onClick={addCondition}
-            className="mt-3 flex items-center gap-2 text-sm text-primary hover:underline"
+            className="mt-4 flex items-center gap-2 text-sm text-primary font-medium hover:underline"
           >
             <Plus className="h-4 w-4" />
             Add condition
@@ -246,47 +296,73 @@ export default function NewRulePage() {
         </div>
 
         {/* Action */}
-        <div>
-          <label className="block text-sm font-medium mb-3">Action</label>
-          <div className="space-y-2">
-            {actions.map((a) => (
-              <label
-                key={a.id}
-                className={cn(
-                  "flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-accent",
-                  action === a.id && "border-primary bg-primary/5"
-                )}
-              >
-                <input
-                  type="radio"
-                  name="action"
-                  value={a.id}
-                  checked={action === a.id}
-                  onChange={() => setAction(a.id)}
-                  className="mt-1"
-                />
-                <div>
-                  <p className="font-medium">{a.name}</p>
-                  <p className="text-sm text-muted-foreground">{a.description}</p>
-                </div>
-              </label>
-            ))}
+        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
+          <h2 className="font-display text-lg font-semibold mb-4">Action</h2>
+          <div className="space-y-3">
+            {actions.map((a) => {
+              const isSelected = action === a.id;
+              const Icon = a.icon;
+
+              return (
+                <label
+                  key={a.id}
+                  className={cn(
+                    "flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-soft",
+                    isSelected
+                      ? "border-primary bg-primary/[0.02] shadow-warm"
+                      : "border-border hover:border-primary/30 hover:bg-accent/50"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="action"
+                    value={a.id}
+                    checked={isSelected}
+                    onChange={() => setAction(a.id)}
+                    className="sr-only"
+                  />
+                  <div
+                    className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-soft",
+                      isSelected ? a.color : "bg-accent text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{a.name}</p>
+                      {isSelected && (
+                        <span className="badge badge-approved">Selected</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {a.description}
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
 
         {/* Custom Prompt (for auto_respond) */}
         {action === "auto_respond" && (
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Custom Instructions (optional)
-            </label>
+          <div className="bg-card rounded-2xl shadow-warm border border-border p-5 animate-fade-in">
+            <h2 className="font-display text-lg font-semibold mb-4">
+              Custom Instructions
+            </h2>
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder="Additional instructions for the AI when generating responses..."
-              rows={3}
-              className="w-full px-3 py-2 border rounded-md bg-background"
+              rows={4}
+              className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft resize-none"
             />
+            <p className="text-xs text-muted-foreground mt-2">
+              These instructions will be added to the AI prompt when generating
+              responses for emails matching this rule.
+            </p>
           </div>
         )}
 
@@ -295,13 +371,20 @@ export default function NewRulePage() {
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+            className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium shadow-warm transition-soft hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Creating..." : "Create Rule"}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                Creating...
+              </span>
+            ) : (
+              "Create Rule"
+            )}
           </button>
           <Link
             href="/dashboard/rules"
-            className="px-4 py-2 border rounded-md hover:bg-accent"
+            className="px-5 py-2.5 border border-border rounded-xl font-medium transition-soft hover:bg-accent"
           >
             Cancel
           </Link>
