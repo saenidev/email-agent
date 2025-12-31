@@ -1,0 +1,69 @@
+[project]
+name = "email-agent"
+version = "0.1.0"
+description = "AI-powered Gmail email agent with web dashboard"
+requires-python = ">=3.11"
+dependencies = [
+    # Web framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.25",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+
+    # Redis & Task Queue
+    "redis>=5.0.1",
+    "arq>=0.25.0",
+
+    # Auth & Security
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "cryptography>=42.0.0",
+
+    # Gmail API
+    "google-api-python-client>=2.116.0",
+    "google-auth-oauthlib>=1.2.0",
+    "google-auth-httplib2>=0.2.0",
+
+    # OpenRouter / LLM
+    "openai>=1.12.0",
+    "httpx>=0.26.0",
+
+    # Settings & Validation
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+    "python-multipart>=0.0.9",
+    "email-validator>=2.1.0",
+
+    # Utilities
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
