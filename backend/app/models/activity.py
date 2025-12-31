@@ -45,4 +45,4 @@ class ActivityLog(Base, UUIDMixin, TimestampMixin):
 
     # Details
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    extra_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -14,7 +16,7 @@ class RuleCondition(BaseModel):
 
 class RuleGroup(BaseModel):
     operator: str  # "AND" or "OR"
-    rules: list[RuleCondition | "RuleGroup"]
+    rules: list[Any]  # Can be RuleCondition or nested RuleGroup
 
 
 class RuleCreate(BaseModel):
