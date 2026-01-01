@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
@@ -45,10 +45,23 @@ function SettingsContent() {
   const queryClient = useQueryClient();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Local state for text inputs (debounced saving)
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [signature, setSignature] = useState("");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
   const { data: settings, isLoading } = useQuery({
     queryKey: ["settings"],
     queryFn: () => settingsApi.get(),
   });
+
+  // Sync local state when settings load
+  useEffect(() => {
+    if (settings?.data) {
+      setSystemPrompt(settings.data.system_prompt || "");
+      setSignature(settings.data.signature || "");
+    }
+  }, [settings?.data]);
 
   const { data: models } = useQuery({
     queryKey: ["models"],
@@ -68,6 +81,28 @@ function SettingsContent() {
       setTimeout(() => setSuccessMessage(null), 3000);
     },
   });
+
+  // Debounced save for text fields (waits 800ms after typing stops)
+  const debouncedSave = useCallback(
+    (field: string, value: string) => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        updateMutation.mutate({ [field]: value });
+      }, 800);
+    },
+    [updateMutation]
+  );
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("gmail") === "connected") {
@@ -288,8 +323,11 @@ function SettingsContent() {
         </div>
         <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
           <textarea
-            value={currentSettings?.system_prompt || ""}
-            onChange={(e) => updateMutation.mutate({ system_prompt: e.target.value })}
+            value={systemPrompt}
+            onChange={(e) => {
+              setSystemPrompt(e.target.value);
+              debouncedSave("system_prompt", e.target.value);
+            }}
             placeholder="Custom instructions for the AI when drafting responses...
 
 Example: Always be concise and professional. Sign off with just my first name. Never use exclamation marks."
@@ -310,8 +348,11 @@ Example: Always be concise and professional. Sign off with just my first name. N
         </div>
         <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
           <textarea
-            value={currentSettings?.signature || ""}
-            onChange={(e) => updateMutation.mutate({ signature: e.target.value })}
+            value={signature}
+            onChange={(e) => {
+              setSignature(e.target.value);
+              debouncedSave("signature", e.target.value);
+            }}
             placeholder="Enter your email signature..."
             rows={4}
             className="w-full p-3 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft resize-none"
