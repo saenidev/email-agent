@@ -14,6 +14,7 @@ import {
   Shield,
   Zap,
   Bot,
+  MessageSquare,
 } from "lucide-react";
 import { settingsApi, gmailApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -276,6 +277,28 @@ function SettingsContent() {
             <span>Precise & Focused</span>
             <span>Creative & Varied</span>
           </div>
+        </div>
+      </section>
+
+      {/* System Prompt */}
+      <section className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-lg font-semibold">AI Instructions</h2>
+        </div>
+        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
+          <textarea
+            value={currentSettings?.system_prompt || ""}
+            onChange={(e) => updateMutation.mutate({ system_prompt: e.target.value })}
+            placeholder="Custom instructions for the AI when drafting responses...
+
+Example: Always be concise and professional. Sign off with just my first name. Never use exclamation marks."
+            rows={6}
+            className="w-full p-3 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft resize-none font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            These instructions guide how the AI writes email responses. Be specific about tone, style, and any rules to follow.
+          </p>
         </div>
       </section>
 

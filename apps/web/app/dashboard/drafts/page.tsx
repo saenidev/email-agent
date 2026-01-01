@@ -118,10 +118,10 @@ export default function DraftsPage() {
                       {draft.subject}
                     </p>
 
-                    {/* Preview */}
-                    <p className="text-sm text-muted-foreground line-clamp-2 bg-accent/50 rounded-lg p-3">
-                      {draft.body_text?.slice(0, 200)}...
-                    </p>
+                    {/* Full draft body */}
+                    <div className="text-sm text-muted-foreground bg-accent/50 rounded-lg p-3 whitespace-pre-wrap">
+                      {draft.body_text}
+                    </div>
 
                     {/* Model attribution */}
                     {draft.llm_model_used && (
