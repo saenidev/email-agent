@@ -34,7 +34,7 @@ class UserSettings(Base, UUIDMixin, TimestampMixin):
     # LLM settings
     llm_model: Mapped[str] = mapped_column(
         String(100),
-        default="anthropic/claude-3.5-sonnet",
+        default="deepseek/deepseek-chat-v3.1:free",
         nullable=False,
     )
     llm_temperature: Mapped[Decimal] = mapped_column(

@@ -59,12 +59,11 @@ async def update_settings(
 
 @router.get("/models")
 async def list_available_models() -> list[dict[str, str]]:
-    """List available LLM models from OpenRouter."""
+    """List available LLM models from OpenRouter (free tier)."""
     return [
-        {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet"},
-        {"id": "anthropic/claude-3-opus", "name": "Claude 3 Opus"},
-        {"id": "openai/gpt-4-turbo", "name": "GPT-4 Turbo"},
-        {"id": "openai/gpt-4o", "name": "GPT-4o"},
-        {"id": "meta-llama/llama-3.1-70b-instruct", "name": "Llama 3.1 70B"},
-        {"id": "google/gemini-pro-1.5", "name": "Gemini Pro 1.5"},
+        {"id": "deepseek/deepseek-chat-v3.1:free", "name": "DeepSeek V3.1 (Free)"},
+        {"id": "deepseek/deepseek-r1-0528:free", "name": "DeepSeek R1 May 2025 (Free)"},
+        {"id": "deepseek/deepseek-r1:free", "name": "DeepSeek R1 (Free)"},
+        {"id": "meta-llama/llama-3.3-70b-instruct:free", "name": "Llama 3.3 70B (Free)"},
+        {"id": "qwen/qwen-2.5-72b-instruct:free", "name": "Qwen 2.5 72B (Free)"},
     ]
