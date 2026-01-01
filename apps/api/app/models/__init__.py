@@ -1,4 +1,5 @@
 from app.models.activity import ActivityLog
+from app.models.batch_draft_job import BatchDraftJob
 from app.models.draft import Draft
 from app.models.email import Email
 from app.models.gmail_token import GmailToken
@@ -14,4 +15,5 @@ __all__ = [
     "Draft",
     "Rule",
     "ActivityLog",
+    "BatchDraftJob",
 ]

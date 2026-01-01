@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    from app.models.batch_draft_job import BatchDraftJob
     from app.models.draft import Draft
     from app.models.email import Email
     from app.models.gmail_token import GmailToken
@@ -31,3 +32,6 @@ class User(Base, UUIDMixin, TimestampMixin):
     emails: Mapped[list["Email"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     drafts: Mapped[list["Draft"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     rules: Mapped[list["Rule"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    batch_draft_jobs: Mapped[list["BatchDraftJob"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )

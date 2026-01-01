@@ -47,11 +47,26 @@ export const gmailApi = {
   disconnect: () => api.delete("/gmail/disconnect"),
 };
 
+export interface BatchDraftJobStatus {
+  id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  total_emails: number;
+  completed_emails: number;
+  failed_emails: number;
+  created_at: string;
+}
+
 export const emailsApi = {
   list: (page = 1, pageSize = 20) =>
     api.get(`/emails?page=${page}&page_size=${pageSize}`),
+  listUnreplied: (page = 1, pageSize = 20) =>
+    api.get(`/emails/unreplied?page=${page}&page_size=${pageSize}`),
   get: (id: string) => api.get(`/emails/${id}`),
   sync: () => api.post("/emails/sync"),
+  generateDrafts: (emailIds: string[]) =>
+    api.post<BatchDraftJobStatus>("/emails/generate-drafts", { email_ids: emailIds }),
+  getBatchJobStatus: (jobId: string) =>
+    api.get<BatchDraftJobStatus>(`/emails/generate-drafts/${jobId}/status`),
 };
 
 export const draftsApi = {

@@ -65,11 +65,20 @@ Next.js 14 App Router with Tailwind CSS. API calls proxy through Next.js rewrite
 
 ### Data Flow
 
+**Automatic Processing (Background):**
 1. ARQ worker polls Gmail for new emails
 2. `EmailProcessor.process_email()` orchestrates response generation
 3. Rules determine action: auto-respond, create draft, or ignore
 4. Drafts await approval (or auto-send based on settings)
 5. Frontend displays drafts queue for user approval
+
+**On-Demand Drafting (User-Initiated):**
+1. User toggles "Unreplied Only" filter in Inbox
+2. User selects emails via checkboxes
+3. User clicks "Generate Drafts" → creates `BatchDraftJob`
+4. API enqueues `generate_draft_for_email` tasks to ARQ
+5. Frontend polls job status, shows progress bar
+6. Drafts appear in Drafts page for approval
 
 ### Approval Modes
 
@@ -83,8 +92,10 @@ Next.js 14 App Router with Tailwind CSS. API calls proxy through Next.js rewrite
 |------|---------|
 | `apps/api/app/services/email_processor.py` | Main processing pipeline |
 | `apps/api/app/config.py` | Environment settings (Pydantic) |
-| `apps/api/app/models/` | SQLAlchemy models (User, Email, Draft, Rule) |
+| `apps/api/app/models/` | SQLAlchemy models (User, Email, Draft, Rule, BatchDraftJob) |
+| `apps/api/app/workers/tasks.py` | ARQ tasks (polling, sending, on-demand drafting) |
 | `apps/web/lib/api.ts` | API client functions |
+| `apps/web/hooks/useEmailSelection.ts` | Email multi-select state hook |
 | `apps/web/next.config.js` | API proxy rewrite to backend |
 | `docker-compose.yml` | PostgreSQL + Redis |
 

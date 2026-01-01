@@ -6,6 +6,7 @@ AI-powered email assistant that connects to Gmail, reads your emails, and automa
 
 - **Gmail Integration** - Secure OAuth2 connection to read and send emails
 - **AI Drafting** - Uses OpenRouter (Claude, GPT, Llama, etc.) to generate contextual responses
+- **On-Demand Drafting** - Select unreplied emails and generate drafts immediately with a single click
 - **3 Approval Modes**:
   - **Draft for Approval** - All responses require your review before sending
   - **Auto-send with Rules** - Automatic for matching rules, draft for others
@@ -175,7 +176,10 @@ email-agent/
 | `GET /api/v1/gmail/auth/url` | Get Gmail OAuth URL |
 | `GET /api/v1/gmail/status` | Check Gmail connection |
 | `GET /api/v1/emails` | List cached emails |
+| `GET /api/v1/emails/unreplied` | List emails without active drafts |
 | `POST /api/v1/emails/sync` | Sync from Gmail |
+| `POST /api/v1/emails/generate-drafts` | Queue selected emails for draft generation |
+| `GET /api/v1/emails/generate-drafts/{id}/status` | Poll batch job progress |
 | `GET /api/v1/drafts` | List AI-generated drafts |
 | `POST /api/v1/drafts/{id}/approve` | Approve and send |
 | `POST /api/v1/drafts/{id}/reject` | Reject draft |
@@ -205,11 +209,18 @@ email-agent/
         └─────────┘
 ```
 
-The ARQ worker polls Gmail for new emails. Each email goes through the `EmailProcessor` pipeline:
+**Automatic Processing:** The ARQ worker polls Gmail for new emails. Each email goes through the `EmailProcessor` pipeline:
 1. **Response Check** - LLM determines if email needs a response
 2. **Rule Evaluation** - Checks against user's automation rules
 3. **Draft Generation** - LLM generates contextual response
 4. **Action** - Create draft for approval, auto-send, or ignore
+
+**On-Demand Drafting:** Users can manually select unreplied emails and trigger immediate draft generation:
+1. Toggle "Unreplied Only" filter in Inbox
+2. Select emails via checkboxes
+3. Click "Generate Drafts" to queue them
+4. Real-time progress bar shows generation status
+5. Review and approve drafts in the Drafts page
 
 ## Troubleshooting
 

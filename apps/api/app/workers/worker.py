@@ -8,6 +8,7 @@ from arq.connections import RedisSettings
 
 from app.config import get_settings
 from app.workers.tasks import (
+    generate_draft_for_email,
     poll_all_users,
     poll_emails_for_user,
     refresh_gmail_tokens,
@@ -42,6 +43,7 @@ class WorkerSettings:
         poll_emails_for_user,
         send_approved_draft,
         refresh_gmail_tokens,
+        generate_draft_for_email,
     ]
 
     # Scheduled jobs (cron)

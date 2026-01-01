@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.session import async_session_maker
+from app.models.batch_draft_job import BatchDraftJob
 from app.models.draft import Draft
 from app.models.email import Email
 from app.models.gmail_token import GmailToken
 from app.models.user import User
 from app.services.email_processor import create_email_processor, get_user_settings
 from app.services.gmail_service import GmailService
+from app.services.openrouter_service import EmailContext, OpenRouterService
 
 logger = logging.getLogger(__name__)
 
@@ -254,3 +256,131 @@ async def refresh_gmail_tokens(ctx: dict) -> dict:
 
         await db.commit()
         return {"refreshed": refreshed, "total": len(tokens)}
+
+
+async def generate_draft_for_email(
+    ctx: dict, email_id: str, batch_job_id: str | None = None
+) -> dict:
+    """Generate a draft for a specific email on-demand.
+
+    This task is used for manual draft generation when user selects
+    emails and requests immediate drafting. It skips the "needs response"
+    check since the user explicitly wants a draft.
+    """
+    async with async_session_maker() as db:
+        try:
+            # Get email with user relationship
+            result = await db.execute(
+                select(Email)
+                .options(selectinload(Email.user).selectinload(User.settings))
+                .where(Email.id == UUID(email_id))
+            )
+            email = result.scalar_one_or_none()
+
+            if not email:
+                await _update_batch_job_failed(db, batch_job_id)
+                return {"status": "error", "reason": "email_not_found"}
+
+            # Check if draft already exists (prevent duplicates)
+            existing_result = await db.execute(
+                select(Draft).where(
+                    Draft.email_id == email.id,
+                    Draft.status.in_(["pending", "approved", "sent", "auto_sent"]),
+                )
+            )
+            if existing_result.scalar_one_or_none():
+                await _update_batch_job_completed(db, batch_job_id)
+                return {"status": "skipped", "reason": "draft_exists"}
+
+            # Get user settings
+            settings = email.user.settings
+            if not settings:
+                await _update_batch_job_failed(db, batch_job_id)
+                return {"status": "error", "reason": "no_settings"}
+
+            # Build EmailContext and generate response
+            llm = OpenRouterService()
+            context = EmailContext(
+                original_email=email.body_text or "",
+                sender_name=email.from_name or email.from_email or "",
+                sender_email=email.from_email or "",
+                subject=email.subject or "",
+                user_signature=settings.signature,
+                custom_instructions=settings.system_prompt,
+            )
+
+            response = await llm.generate_email_response(
+                context,
+                model=settings.llm_model,
+                temperature=float(settings.llm_temperature),
+            )
+
+            # Create draft record
+            draft = Draft(
+                user_id=email.user_id,
+                email_id=email.id,
+                to_emails=[email.from_email] if email.from_email else [],
+                subject=f"Re: {email.subject or ''}",
+                body_text=response.body,
+                status="pending",
+                llm_model_used=settings.llm_model,
+                llm_reasoning=response.reasoning,
+            )
+            db.add(draft)
+
+            # Update batch job progress
+            await _update_batch_job_completed(db, batch_job_id)
+
+            await db.commit()
+            logger.info(
+                "Generated draft %s for email %s", draft.id, email_id
+            )
+            return {"status": "success", "draft_id": str(draft.id)}
+
+        except Exception as e:
+            logger.exception("Error generating draft for email %s: %s", email_id, e)
+            await db.rollback()
+
+            # Try to update batch job as failed
+            try:
+                async with async_session_maker() as db2:
+                    await _update_batch_job_failed(db2, batch_job_id)
+                    await db2.commit()
+            except Exception:
+                pass
+
+            return {"status": "error", "reason": str(e)}
+
+
+async def _update_batch_job_completed(db: AsyncSession, batch_job_id: str | None) -> None:
+    """Increment completed count and check if job is done."""
+    if not batch_job_id:
+        return
+
+    result = await db.execute(
+        select(BatchDraftJob).where(BatchDraftJob.id == UUID(batch_job_id))
+    )
+    batch_job = result.scalar_one_or_none()
+
+    if batch_job:
+        batch_job.completed_emails += 1
+        if batch_job.completed_emails + batch_job.failed_emails >= batch_job.total_emails:
+            batch_job.status = "completed"
+        await db.flush()
+
+
+async def _update_batch_job_failed(db: AsyncSession, batch_job_id: str | None) -> None:
+    """Increment failed count and check if job is done."""
+    if not batch_job_id:
+        return
+
+    result = await db.execute(
+        select(BatchDraftJob).where(BatchDraftJob.id == UUID(batch_job_id))
+    )
+    batch_job = result.scalar_one_or_none()
+
+    if batch_job:
+        batch_job.failed_emails += 1
+        if batch_job.completed_emails + batch_job.failed_emails >= batch_job.total_emails:
+            batch_job.status = "completed"  # Still mark completed, frontend shows partial success
+        await db.flush()
