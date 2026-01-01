@@ -11,7 +11,6 @@ import {
   Sparkles,
   Loader2,
   X,
-  Check,
 } from "lucide-react";
 import { emailsApi, BatchDraftJobStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";

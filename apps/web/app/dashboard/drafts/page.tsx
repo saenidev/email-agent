@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { FileEdit, Check, X, Sparkles, Send } from "lucide-react";
+import { FileEdit, Check, X, Sparkles } from "lucide-react";
 import { draftsApi } from "@/lib/api";
 import { PageHeader, EmptyState, LoadingSpinner, StatusBadge } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
