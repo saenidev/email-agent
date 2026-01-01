@@ -1,8 +1,12 @@
 """OpenRouter LLM service for generating email responses."""
 
+import logging
+import re
 from dataclasses import dataclass
 
 from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
 
 from app.config import get_settings
 
@@ -57,8 +61,9 @@ class OpenRouterService:
         system_prompt = self._build_system_prompt(context)
         user_prompt = self._build_user_prompt(context)
 
+        used_model = model or self.default_model
         response = await self.client.chat.completions.create(
-            model=model or self.default_model,
+            model=used_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -68,6 +73,12 @@ class OpenRouterService:
         )
 
         content = response.choices[0].message.content or ""
+        logger.debug(
+            "LLM response from %s: length=%d, preview=%s",
+            used_model,
+            len(content),
+            content[:200] if content else "(empty)",
+        )
         return self._parse_response(content)
 
     async def should_respond(self, email_body: str, subject: str) -> tuple[bool, str]:
@@ -214,6 +225,15 @@ CONFIDENCE: [0.0 to 1.0]"""
         reasoning = ""
         confidence = 0.7
 
+        # Handle reasoning models (DeepSeek R1, etc.) that wrap thinking in <think> tags
+        # Strip the thinking block but preserve the actual response
+        think_match = re.search(r"<think>(.*?)</think>", content, re.DOTALL)
+        if think_match:
+            # Extract reasoning from think block
+            reasoning = think_match.group(1).strip()[:500]  # Limit reasoning length
+            # Remove think block from content for parsing
+            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
         # Extract response body
         if "RESPONSE:" in content:
             parts = content.split("RESPONSE:")
@@ -245,6 +265,15 @@ CONFIDENCE: [0.0 to 1.0]"""
         # Fallback if parsing failed
         if not body:
             body = content
+
+        # Log warning if body is still empty (helps debug model issues)
+        if not body.strip():
+            logger.warning(
+                "Empty response body after parsing. Original content length: %d, "
+                "had think block: %s",
+                len(content) if content else 0,
+                "RESPONSE:" in (content or ""),
+            )
 
         return DraftResponse(
             body=body,
