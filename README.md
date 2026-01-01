@@ -207,6 +207,31 @@ The ARQ worker polls Gmail for new emails. Each email goes through the `EmailPro
 3. **Draft Generation** - LLM generates contextual response
 4. **Action** - Create draft for approval, auto-send, or ignore
 
+## Troubleshooting
+
+### API won't start / "bad interpreter" error
+After cloning or moving the repo, the Python virtual environment may have stale paths. Fix by recreating it:
+```bash
+rm -rf apps/api/.venv
+cd apps/api && uv sync
+```
+
+### Port 8001 already in use
+The API runs on port 8001. Check what's using it:
+```bash
+lsof -i :8001
+```
+
+### Frontend can't connect to API
+Ensure the API is running on port 8001. The frontend proxies `/api/v1/*` requests to `localhost:8001`.
+
+### Database connection errors
+Make sure PostgreSQL and Redis are running:
+```bash
+make db-up
+docker ps  # Should show emailagent-postgres and emailagent-redis
+```
+
 ## License
 
 MIT

@@ -110,3 +110,5 @@ API requires `apps/api/.env` with:
 - Use `from __future__ import annotations` for recursive Pydantic types
 - Use bcrypt directly instead of passlib (compatibility issues)
 - Frontend uses `useSearchParams()` which requires Suspense boundary in Next.js 14
+- After moving/cloning the repo, recreate Python venv: `rm -rf apps/api/.venv && cd apps/api && uv sync`
+- API runs on port 8001 (not 8000) to avoid conflicts with other projects
