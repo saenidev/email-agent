@@ -7,7 +7,12 @@ from arq import cron
 from arq.connections import RedisSettings
 
 from app.config import get_settings
-from app.workers.tasks import poll_all_users, refresh_gmail_tokens, send_approved_draft
+from app.workers.tasks import (
+    poll_all_users,
+    poll_emails_for_user,
+    refresh_gmail_tokens,
+    send_approved_draft,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,6 +39,7 @@ class WorkerSettings:
     # Available functions
     functions = [
         poll_all_users,
+        poll_emails_for_user,
         send_approved_draft,
         refresh_gmail_tokens,
     ]
