@@ -9,26 +9,19 @@ Email Agent is an AI-powered email assistant that connects to Gmail, reads email
 ## Common Commands
 
 ```bash
-# Start infrastructure (PostgreSQL + Redis)
-make db-up
+# Start everything (DB + API + Web + Worker) in one terminal
+make dev
 
-# Run database migrations
-make migrate
+# Or start services individually:
+make db-up      # Start PostgreSQL and Redis
+make migrate    # Run database migrations
+make api        # Start API backend (port 8001)
+make web        # Start web frontend (port 3000)
+make worker     # Start ARQ background worker
 
-# Start API backend (port 8001)
-make api
-
-# Start web frontend (port 3000)
-make web    # or: pnpm dev
-
-# Start ARQ background worker
-make worker
-
-# Run tests
-make test
-
-# Lint
-make lint
+# Quality
+make test       # Run tests
+make lint       # Run linters
 
 # Create new migration
 make migrate-new msg="description"

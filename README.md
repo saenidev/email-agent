@@ -65,15 +65,18 @@ OPENROUTER_DEFAULT_MODEL=anthropic/claude-3.5-sonnet
 ### 3. Start Services
 
 ```bash
-# Start PostgreSQL and Redis
-make db-up
-
 # Run database migrations
 make migrate
 
-# In separate terminals:
+# Start everything in one terminal (recommended)
+make dev
+```
+
+Or start services separately:
+```bash
+make db-up    # Start PostgreSQL and Redis
 make api      # Terminal 1: FastAPI on :8001
-make web      # Terminal 2: Next.js on :3000 (or: pnpm dev)
+make web      # Terminal 2: Next.js on :3000
 make worker   # Terminal 3: Background email polling
 ```
 
@@ -109,14 +112,15 @@ make worker   # Terminal 3: Background email polling
 
 ```bash
 make help       # Show all commands
-make dev        # Instructions for starting all services
-make api        # Start FastAPI with hot reload
-make web        # Start Next.js dev server (or: pnpm dev)
-make worker     # Start ARQ background worker
+make dev        # Start ALL services in one terminal (API + Web + Worker)
+make api        # Start FastAPI backend only
+make web        # Start Next.js frontend only
+make worker     # Start ARQ background worker only
 make test       # Run pytest
 make lint       # Run linters (ruff + eslint)
 make migrate    # Apply database migrations
 make migrate-new msg="add feature"  # Create new migration
+make db-up      # Start database containers
 make db-down    # Stop database containers
 ```
 
