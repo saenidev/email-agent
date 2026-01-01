@@ -1,5 +1,7 @@
 """Rule engine for email automation."""
 
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -90,7 +92,9 @@ class RuleEngine:
     @classmethod
     def _parse_conditions(cls, data: dict[str, Any]) -> RuleGroup:
         """Parse conditions from JSON structure."""
-        operator = data.get("operator", "AND")
+        operator = str(data.get("operator", "AND")).upper()
+        if operator not in {"AND", "OR"}:
+            operator = "AND"
         conditions: list[RuleCondition | RuleGroup] = []
 
         for item in data.get("rules", []):

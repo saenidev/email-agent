@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import hashlib
+import hmac
+
+from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.core.encryption import encrypt_token
 from app.db.session import get_db
 from app.dependencies import CurrentUser
@@ -11,14 +15,38 @@ from app.schemas.gmail import GmailStatus
 from app.services.gmail_service import GmailService
 from app.services.oauth_service import exchange_code_for_tokens, get_authorization_url
 
+
+def _sign_state(user_id: str) -> str:
+    signature = hmac.new(
+        settings.secret_key.encode(),
+        user_id.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{user_id}:{signature}"
+
+
+def _verify_state(state: str) -> str | None:
+    if not state or ":" not in state:
+        return None
+    user_id, signature = state.split(":", 1)
+    expected = hmac.new(
+        settings.secret_key.encode(),
+        user_id.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        return None
+    return user_id
+
 router = APIRouter()
+settings = get_settings()
 
 
 @router.get("/auth/url")
 async def get_gmail_auth_url(current_user: CurrentUser) -> dict[str, str]:
     """Get the Gmail OAuth authorization URL."""
     # Include user_id in state for callback
-    auth_url = get_authorization_url(state=str(current_user.id))
+    auth_url = get_authorization_url(state=_sign_state(str(current_user.id)))
     return {"auth_url": auth_url}
 
 
@@ -30,7 +58,7 @@ async def gmail_auth_callback(
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
     """Handle Gmail OAuth callback."""
-    frontend_url = "http://localhost:3000/dashboard/settings"
+    frontend_url = f"{settings.frontend_url.rstrip('/')}/dashboard/settings"
 
     if error:
         return RedirectResponse(url=f"{frontend_url}?error={error}")
@@ -44,7 +72,11 @@ async def gmail_auth_callback(
     try:
         from uuid import UUID
 
-        user_id = UUID(state)
+        verified_user_id = _verify_state(state)
+        if not verified_user_id:
+            return RedirectResponse(url=f"{frontend_url}?error=invalid_state")
+
+        user_id = UUID(verified_user_id)
 
         # Exchange code for tokens
         tokens = await exchange_code_for_tokens(code)

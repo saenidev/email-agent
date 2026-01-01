@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     app_name: str = "Email Agent"
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
+    frontend_url: str = "http://localhost:3000"
 
     # Database
     database_url: PostgresDsn
@@ -31,7 +32,7 @@ class Settings(BaseSettings):
     # Gmail OAuth
     gmail_client_id: str
     gmail_client_secret: str
-    gmail_redirect_uri: str = "http://localhost:8000/api/v1/gmail/auth/callback"
+    gmail_redirect_uri: str = "http://localhost:8001/api/v1/gmail/auth/callback"
     gmail_scopes: list[str] = [
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/gmail.send",

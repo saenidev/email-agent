@@ -23,6 +23,7 @@ class ProcessingResult(str, Enum):
 
     DRAFT_CREATED = "draft_created"
     AUTO_SENT = "auto_sent"
+    FORWARDED = "forwarded"
     IGNORED = "ignored"
     NO_RESPONSE_NEEDED = "no_response_needed"
     ERROR = "error"
@@ -71,8 +72,45 @@ class EmailProcessor:
 
             if matched_rule and matched_rule.action == RuleAction.IGNORE:
                 logger.info(f"Email {email.gmail_id} ignored by rule: {matched_rule.name}")
-                await self._update_email_status(email.gmail_id, is_processed=True)
+                await self._update_email_status(
+                    email.gmail_id,
+                    is_processed=True,
+                    requires_response=False,
+                )
                 return ProcessingResult.IGNORED
+
+            if matched_rule and matched_rule.action == RuleAction.FORWARD:
+                forward_targets = self._get_forward_targets(matched_rule)
+                if not forward_targets:
+                    logger.error(
+                        "Forward rule %s missing forward targets for email %s",
+                        matched_rule.name,
+                        email.gmail_id,
+                    )
+                    await self._update_email_status(
+                        email.gmail_id,
+                        is_processed=True,
+                        requires_response=False,
+                    )
+                    return ProcessingResult.ERROR
+
+                forward_body = self._format_forward_body(email)
+                self.gmail.send_message(
+                    to=forward_targets,
+                    subject=f"Fwd: {email.subject}",
+                    body=forward_body,
+                )
+                await self._update_email_status(
+                    email.gmail_id,
+                    is_processed=True,
+                    requires_response=False,
+                )
+                logger.info(
+                    "Forwarded email %s to %s",
+                    email.gmail_id,
+                    ", ".join(forward_targets),
+                )
+                return ProcessingResult.FORWARDED
 
             # Step 3: Generate AI response
             context = EmailContext(
@@ -98,11 +136,11 @@ class EmailProcessor:
 
             if should_auto_send:
                 # Auto-send the response
-                await self.gmail.send_message(
+                self.gmail.send_message(
                     to=[email.from_email],
                     subject=f"Re: {email.subject}",
                     body=draft_response.body,
-                    reply_to_message_id=email.gmail_id,
+                    reply_to_message_id=email.message_id,
                     thread_id=email.thread_id,
                 )
 
@@ -116,7 +154,11 @@ class EmailProcessor:
                     status="auto_sent",
                 )
 
-                await self._update_email_status(email.gmail_id, is_processed=True)
+                await self._update_email_status(
+                    email.gmail_id,
+                    is_processed=True,
+                    requires_response=True,
+                )
                 logger.info(f"Auto-sent response to {email.from_email}")
                 return ProcessingResult.AUTO_SENT
 
@@ -131,7 +173,11 @@ class EmailProcessor:
                     status="pending",
                 )
 
-                await self._update_email_status(email.gmail_id, is_processed=True)
+                await self._update_email_status(
+                    email.gmail_id,
+                    is_processed=True,
+                    requires_response=True,
+                )
                 logger.info(f"Created draft for email from {email.from_email}")
                 return ProcessingResult.DRAFT_CREATED
 
@@ -145,6 +191,9 @@ class EmailProcessor:
         matched_rule: Rule | None,
     ) -> bool:
         """Determine if email should be auto-sent based on settings and rules."""
+        if matched_rule and matched_rule.action in {RuleAction.DRAFT_ONLY, RuleAction.FORWARD}:
+            return False
+
         if approval_mode == "fully_automatic":
             return True
 
@@ -155,6 +204,29 @@ class EmailProcessor:
 
         # draft_approval mode - always require approval
         return False
+
+    def _get_forward_targets(self, matched_rule: Rule) -> list[str]:
+        """Extract forward targets from rule config."""
+        if not matched_rule.action_config:
+            return []
+        targets = matched_rule.action_config.get("forward_to")
+        if isinstance(targets, str):
+            return [targets]
+        if isinstance(targets, list):
+            return [t for t in targets if isinstance(t, str) and t.strip()]
+        return []
+
+    def _format_forward_body(self, email: EmailMessage) -> str:
+        """Create a simple forwarded message body."""
+        header_lines = [
+            "Forwarded message:",
+            f"From: {email.from_name or ''} <{email.from_email}>",
+            f"To: {', '.join(email.to_emails)}",
+            f"Subject: {email.subject}",
+            f"Date: {email.received_at.isoformat()}",
+            "",
+        ]
+        return "\n".join(header_lines) + (email.body_text or "")
 
     def _get_custom_instructions(
         self,

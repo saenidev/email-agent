@@ -51,6 +51,12 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                 if new_history_id:
                     user.gmail_token.history_id = new_history_id
                     await db.flush()
+                else:
+                    # History invalid/expired, fall back to full sync
+                    messages = gmail_service.list_messages(
+                        query="is:inbox is:unread",
+                        max_results=20,
+                    )
             else:
                 # Full sync - get recent unread messages
                 messages = gmail_service.list_messages(
@@ -166,12 +172,26 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
                 token.refresh_token_encrypted,
             )
 
+            reply_message_id = None
+            thread_id = draft.email.thread_id if draft.email else None
+            if draft.email:
+                try:
+                    original_message = gmail_service.get_message(draft.email.gmail_id)
+                    reply_message_id = original_message.message_id
+                    thread_id = original_message.thread_id or thread_id
+                except Exception as e:
+                    logger.warning(
+                        "Failed to fetch message-id for draft %s: %s",
+                        draft_id,
+                        e,
+                    )
+
             gmail_service.send_message(
                 to=draft.to_emails,
                 subject=draft.subject,
                 body=draft.body_text,
-                reply_to_message_id=draft.email.gmail_id if draft.email else None,
-                thread_id=draft.email.thread_id if draft.email else None,
+                reply_to_message_id=reply_message_id,
+                thread_id=thread_id,
             )
 
             # Update draft status

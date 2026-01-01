@@ -1,7 +1,8 @@
+import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,6 +15,7 @@ from app.schemas.draft import DraftDetail, DraftList, DraftSummary, DraftUpdate
 from app.schemas.email import EmailSummary
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=DraftList)
@@ -176,8 +178,12 @@ async def approve_draft(
         redis = await create_pool(RedisSettings.from_dsn(str(settings.redis_url)))
         await redis.enqueue_job("send_approved_draft", str(draft_id))
         await redis.close()
-    except Exception:
-        pass  # Log error but don't fail
+    except Exception as e:
+        logger.exception("Failed to enqueue approved draft %s: %s", draft_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to enqueue draft for sending",
+        )
 
     return {"status": "approved", "draft_id": str(draft_id)}
 
@@ -220,7 +226,8 @@ async def reject_draft(
 async def regenerate_draft(
     draft_id: UUID,
     current_user: CurrentUser,
-    custom_prompt: str | None = None,
+    custom_prompt: str | None = Body(None, embed=True),
+    request: Request | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     """Regenerate draft with optional custom prompt."""
@@ -249,6 +256,9 @@ async def regenerate_draft(
     # Get user settings and regenerate
     from app.models.user_settings import UserSettings
     from app.services.openrouter_service import EmailContext, OpenRouterService
+
+    if custom_prompt is None and request is not None:
+        custom_prompt = request.query_params.get("custom_prompt")
 
     settings_result = await db.execute(
         select(UserSettings).where(UserSettings.user_id == current_user.id)

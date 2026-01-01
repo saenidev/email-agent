@@ -2,7 +2,7 @@
 
 import base64
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from typing import Any
 
@@ -20,6 +20,7 @@ class EmailMessage:
     """Parsed email message."""
 
     gmail_id: str
+    message_id: str | None
     thread_id: str
     from_email: str
     from_name: str | None
@@ -115,7 +116,7 @@ class GmailService:
         thread_id: str | None = None,
     ) -> str:
         """Send an email message."""
-        message = MIMEText(body)
+        message = MIMEText(body, "plain", "utf-8")
         message["to"] = ", ".join(to)
         message["subject"] = subject
 
@@ -160,10 +161,11 @@ class GmailService:
 
         # Parse date
         internal_date = int(msg.get("internalDate", 0))
-        received_at = datetime.fromtimestamp(internal_date / 1000)
+        received_at = datetime.fromtimestamp(internal_date / 1000, tz=timezone.utc)
 
         return EmailMessage(
             gmail_id=msg["id"],
+            message_id=headers.get("message-id"),
             thread_id=msg.get("threadId", ""),
             from_email=from_email,
             from_name=from_name,

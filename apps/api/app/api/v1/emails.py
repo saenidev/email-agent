@@ -88,7 +88,10 @@ async def sync_emails(
         await redis.close()
         return {"status": "sync_started"}
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @router.get("/{email_id}/thread")

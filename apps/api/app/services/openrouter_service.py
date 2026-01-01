@@ -102,12 +102,25 @@ Examples that DO require response:
         )
 
         content = response.choices[0].message.content or ""
-        requires_response = "REQUIRES_RESPONSE: yes" in content.lower()
 
-        # Extract reason
+        requires_response = False
         reason = "Unable to determine"
-        if "REASON:" in content:
-            reason = content.split("REASON:")[1].strip()
+        for line in content.splitlines():
+            line_stripped = line.strip()
+            if line_stripped.lower().startswith("requires_response:"):
+                value = line_stripped.split(":", 1)[1].strip().lower()
+                requires_response = value.startswith("y")
+            elif line_stripped.lower().startswith("reason:"):
+                parsed_reason = line_stripped.split(":", 1)[1].strip()
+                if parsed_reason:
+                    reason = parsed_reason
+
+        if not requires_response and "requires_response: yes" in content.lower():
+            requires_response = True
+        if reason == "Unable to determine":
+            lower_content = content.lower()
+            if "reason:" in lower_content:
+                reason = content[lower_content.index("reason:") + len("reason:") :].strip()
 
         return requires_response, reason
 

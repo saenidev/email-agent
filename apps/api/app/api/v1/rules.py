@@ -200,6 +200,7 @@ async def test_rule(
     # Create email message for testing
     test_email = EmailMessage(
         gmail_id=email.gmail_id,
+        message_id=None,
         thread_id=email.thread_id or "",
         from_email=email.from_email or "",
         from_name=email.from_name,
