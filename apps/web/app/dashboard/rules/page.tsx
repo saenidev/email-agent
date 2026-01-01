@@ -5,6 +5,10 @@ import { Plus, Filter, Trash2, Power, PowerOff, Zap, Forward, Mail, Ban } from "
 import Link from "next/link";
 import { rulesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { PageHeader, EmptyState, LoadingSpinner } from "@/components/dashboard";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const actionConfig: Record<string, { label: string; icon: typeof Zap; color: string }> = {
   auto_respond: {
@@ -51,80 +55,65 @@ export default function RulesPage() {
 
   return (
     <div className="max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
-            Automation Rules
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Configure how the agent handles different emails
-          </p>
-        </div>
-        <Link
-          href="/dashboard/rules/new"
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium shadow-warm transition-soft hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          New Rule
-        </Link>
-      </div>
+      <PageHeader
+        title="Automation Rules"
+        description="Configure how the agent handles different emails"
+        actions={
+          <Button asChild size="sm" className="gap-2">
+            <Link href="/dashboard/rules/new">
+              <Plus className="h-4 w-4" />
+              New Rule
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-          <p>Loading rules...</p>
-        </div>
+        <LoadingSpinner className="py-16" label="Loading rules..." />
       ) : rules.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-16 w-16 rounded-2xl bg-accent flex items-center justify-center mb-4">
-            <Filter className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="font-display text-lg font-medium mb-1">No rules yet</h3>
-          <p className="text-muted-foreground text-sm max-w-sm mb-6">
-            Create rules to automate how the agent handles different types of emails
-          </p>
-          <Link
-            href="/dashboard/rules/new"
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium shadow-warm transition-soft hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Your First Rule
-          </Link>
-        </div>
+        <EmptyState
+          icon={Filter}
+          title="No rules yet"
+          description="Create rules to automate how the agent handles different types of emails"
+          action={
+            <Button asChild className="gap-2">
+              <Link href="/dashboard/rules/new">
+                <Plus className="h-4 w-4" />
+                Create Your First Rule
+              </Link>
+            </Button>
+          }
+        />
       ) : (
-        <div className="space-y-4">
-          {rules.map((rule: any, index: number) => {
+        <div className="space-y-3">
+          {rules.map((rule: any) => {
             const action = actionConfig[rule.action] || actionConfig.draft_only;
             const ActionIcon = action.icon;
 
             return (
-              <div
+              <Card
                 key={rule.id}
                 className={cn(
-                  "bg-card rounded-2xl shadow-warm border border-border p-5 transition-soft",
+                  "p-4 transition-opacity",
                   !rule.is_active && "opacity-60"
                 )}
-                style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-start justify-between gap-4">
                   {/* Content */}
-                  <div className="flex items-start gap-4 flex-1">
+                  <div className="flex items-start gap-3 flex-1">
                     <div
                       className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                        "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
                         action.color
                       )}
                     >
-                      <ActionIcon className="h-5 w-5" />
+                      <ActionIcon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className="font-medium">{rule.name}</h3>
-                        <span className="badge bg-secondary text-secondary-foreground">
-                          {action.label}
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <h3 className="font-medium text-sm">{rule.name}</h3>
+                        <Badge variant="secondary">{action.label}</Badge>
                         <span className="text-xs text-muted-foreground">
                           Priority {rule.priority}
                         </span>
@@ -139,14 +128,16 @@ export default function RulesPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => toggleMutation.mutate(rule.id)}
                       disabled={toggleMutation.isPending}
                       className={cn(
-                        "p-2.5 rounded-xl transition-soft",
+                        "h-8 w-8",
                         rule.is_active
-                          ? "text-success hover:bg-success/10"
-                          : "text-muted-foreground hover:bg-accent"
+                          ? "text-success hover:text-success hover:bg-success/10"
+                          : "text-muted-foreground"
                       )}
                       title={rule.is_active ? "Disable rule" : "Enable rule"}
                     >
@@ -155,22 +146,24 @@ export default function RulesPage() {
                       ) : (
                         <PowerOff className="h-4 w-4" />
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => {
                         if (confirm("Delete this rule?")) {
                           deleteMutation.mutate(rule.id);
                         }
                       }}
                       disabled={deleteMutation.isPending}
-                      className="p-2.5 text-destructive hover:bg-destructive/10 rounded-xl transition-soft"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                       title="Delete rule"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>

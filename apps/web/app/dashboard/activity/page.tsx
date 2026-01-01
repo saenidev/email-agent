@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { activityApi } from "@/lib/api";
+import { PageHeader, EmptyState, LoadingSpinner } from "@/components/dashboard";
+import { Card } from "@/components/ui/card";
 
 const activityConfig: Record<
   string,
@@ -88,40 +90,25 @@ export default function ActivityPage() {
 
   return (
     <div className="max-w-4xl">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Activity Log
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Track what your email agent has been doing
-        </p>
-      </div>
+      <PageHeader
+        title="Activity Log"
+        description="Track what your email agent has been doing"
+      />
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-          <p>Loading activity...</p>
-        </div>
+        <LoadingSpinner className="py-16" label="Loading activity..." />
       ) : activities.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-16 w-16 rounded-2xl bg-accent flex items-center justify-center mb-4">
-            <Activity className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="font-display text-lg font-medium mb-1">
-            No activity yet
-          </h3>
-          <p className="text-muted-foreground text-sm max-w-sm">
-            Activity from the email agent will appear here as it processes your
-            emails
-          </p>
-        </div>
+        <EmptyState
+          icon={Activity}
+          title="No activity yet"
+          description="Activity from the email agent will appear here as it processes your emails"
+        />
       ) : (
-        <div className="bg-card rounded-2xl shadow-warm border border-border overflow-hidden">
+        <Card className="overflow-hidden">
           {/* Timeline */}
           <div className="relative">
-            {activities.map((activity, index) => {
+            {activities.map((activity: any, index: number) => {
               const config =
                 activityConfig[activity.activity_type] ||
                 activityConfig.email_received;
@@ -132,36 +119,35 @@ export default function ActivityPage() {
                 <div
                   key={activity.id}
                   className={cn(
-                    "relative flex gap-4 p-4",
+                    "relative flex gap-3 p-3",
                     !isLast && "border-b border-border"
                   )}
-                  style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {/* Timeline connector */}
                   {!isLast && (
-                    <div className="absolute left-[30px] top-[52px] bottom-0 w-px bg-border" />
+                    <div className="absolute left-[26px] top-[44px] bottom-0 w-px bg-border" />
                   )}
 
                   {/* Icon */}
                   <div
                     className={cn(
-                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 relative z-10",
+                      "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 relative z-10",
                       config.color
                     )}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 pt-1">
+                  <div className="flex-1 min-w-0 pt-0.5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground mb-0.5">
+                        <p className="text-xs font-medium text-muted-foreground mb-0.5">
                           {config.label}
                         </p>
                         <p className="text-sm">{activity.description}</p>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
                         <Clock className="h-3 w-3" />
                         {formatTimeAgo(activity.created_at)}
                       </div>
@@ -171,7 +157,7 @@ export default function ActivityPage() {
               );
             })}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

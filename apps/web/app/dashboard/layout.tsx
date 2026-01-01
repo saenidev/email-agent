@@ -14,9 +14,11 @@ import {
   X,
   Sun,
   Moon,
-  Sparkles,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const navigation = [
   { name: "Inbox", href: "/dashboard/emails", icon: Inbox },
@@ -44,7 +46,9 @@ export default function DashboardLayout({
 
     // Check for saved theme preference or system preference
     const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
 
     if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
       setDarkMode(true);
@@ -81,56 +85,52 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-card shadow-warm-lg transform transition-transform duration-250 ease-soft lg:translate-x-0 scrollbar-warm overflow-y-auto",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-out lg:translate-x-0 scrollbar-thin overflow-y-auto",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo section */}
-        <div className="flex h-18 items-center justify-between px-6 border-b border-border">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2.5 group"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary transition-soft group-hover:bg-primary/15">
-              <Sparkles className="h-5 w-5" />
+        <div className="flex h-14 items-center justify-between px-4 border-b border-border">
+          <Link href="/dashboard" className="flex items-center gap-2 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Mail className="h-4 w-4" />
             </div>
-            <span className="font-display text-xl font-semibold tracking-tight">
-              Email Agent
-            </span>
+            <span className="text-base font-semibold">Email Agent</span>
           </Link>
-          <button
-            className="lg:hidden p-2 rounded-lg hover:bg-accent transition-soft"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden h-8 w-8"
             onClick={() => setSidebarOpen(false)}
           >
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex flex-col gap-1.5 p-4">
-          <p className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <nav className="flex flex-col gap-1 p-3">
+          <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Navigation
           </p>
-          {navigation.map((item, index) => {
+          {navigation.map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-soft",
+                  "group flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-warm"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
-                style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg transition-soft",
+                    "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
                     isActive
                       ? "bg-primary-foreground/20"
-                      : "bg-accent group-hover:bg-background"
+                      : "bg-muted group-hover:bg-background"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -142,13 +142,13 @@ export default function DashboardLayout({
         </nav>
 
         {/* Bottom section */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-card">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border bg-card">
           {/* Dark mode toggle */}
           <button
             onClick={toggleDarkMode}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-soft mb-2"
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
               {darkMode ? (
                 <Sun className="h-4 w-4" />
               ) : (
@@ -158,12 +158,14 @@ export default function DashboardLayout({
             {darkMode ? "Light Mode" : "Dark Mode"}
           </button>
 
+          <Separator className="my-2" />
+
           {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-soft"
+            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
               <LogOut className="h-4 w-4" />
             </div>
             Sign Out
@@ -172,25 +174,27 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-72">
+      <div className="lg:pl-64">
         {/* Mobile header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 backdrop-blur-md px-4 lg:hidden">
-          <button
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/80 backdrop-blur-md px-4 lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-accent transition-soft"
           >
-            <Menu className="h-5 w-5" />
-          </button>
+            <Menu className="h-4 w-4" />
+          </Button>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="h-4 w-4" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Mail className="h-4 w-4" />
             </div>
-            <span className="font-display font-semibold">Email Agent</span>
+            <span className="font-semibold text-sm">Email Agent</span>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-6 lg:p-8 animate-fade-in">{children}</main>
+        <main className="p-4 lg:p-6 animate-fade-in">{children}</main>
       </div>
     </div>
   );

@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -26,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${fraunces.variable}`}>
+    <html lang="en" className={inter.variable}>
       <body className="font-sans">
         <Providers>{children}</Providers>
       </body>

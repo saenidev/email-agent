@@ -18,6 +18,18 @@ import {
 } from "lucide-react";
 import { settingsApi, gmailApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { PageHeader, LoadingSpinner } from "@/components/dashboard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const approvalModes = [
   {
@@ -129,91 +141,82 @@ function SettingsContent() {
   const gmail = gmailStatus?.data;
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-        <p>Loading settings...</p>
-      </div>
-    );
+    return <LoadingSpinner className="py-16" label="Loading settings..." />;
   }
 
   return (
     <div className="max-w-2xl">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Configure your email agent preferences
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Configure your email agent preferences"
+      />
 
       {/* Success message */}
       {successMessage && (
-        <div className="mb-6 p-4 bg-success/10 text-success rounded-xl flex items-center gap-3 animate-fade-in">
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
-          <p className="font-medium">{successMessage}</p>
+        <div className="mb-6 p-3 bg-success/10 text-success rounded-lg flex items-center gap-3 animate-fade-in">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <p className="text-sm font-medium">{successMessage}</p>
         </div>
       )}
 
       {/* Gmail Connection */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Mail className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg font-semibold">Gmail Connection</h2>
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Mail className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Gmail Connection</h2>
         </div>
-        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
-          {gmail?.connected ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center">
-                  <CheckCircle2 className="h-6 w-6 text-success" />
+        <Card>
+          <CardContent className="p-4">
+            {gmail?.connected ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Connected</p>
+                    <p className="text-xs text-muted-foreground">{gmail.email}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">Connected</p>
-                  <p className="text-sm text-muted-foreground">{gmail.email}</p>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnectGmail}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Unplug className="h-4 w-4 mr-2" />
+                  Disconnect
+                </Button>
               </div>
-              <button
-                onClick={handleDisconnectGmail}
-                className="flex items-center gap-2 px-4 py-2.5 text-destructive border border-destructive/30 rounded-xl font-medium transition-soft hover:bg-destructive/10"
-              >
-                <Unplug className="h-4 w-4" />
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-warning" />
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Not connected</p>
+                    <p className="text-xs text-muted-foreground">
+                      Connect your Gmail to get started
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">Not connected</p>
-                  <p className="text-sm text-muted-foreground">
-                    Connect your Gmail to get started
-                  </p>
-                </div>
+                <Button size="sm" onClick={handleConnectGmail}>
+                  Connect Gmail
+                </Button>
               </div>
-              <button
-                onClick={handleConnectGmail}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium shadow-warm transition-soft hover:opacity-90"
-              >
-                Connect Gmail
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       {/* Approval Mode */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg font-semibold">Approval Mode</h2>
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Approval Mode</h2>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {approvalModes.map((mode) => {
             const isSelected = currentSettings?.approval_mode === mode.id;
             const Icon = mode.icon;
@@ -222,9 +225,9 @@ function SettingsContent() {
               <label
                 key={mode.id}
                 className={cn(
-                  "flex items-start gap-4 p-4 bg-card rounded-2xl border cursor-pointer transition-soft",
+                  "flex items-start gap-3 p-3 bg-card rounded-lg border cursor-pointer transition-colors",
                   isSelected
-                    ? "border-primary shadow-warm bg-primary/[0.02]"
+                    ? "border-primary bg-primary/[0.02]"
                     : "border-border hover:border-primary/30 hover:bg-accent/50"
                 )}
               >
@@ -238,20 +241,18 @@ function SettingsContent() {
                 />
                 <div
                   className={cn(
-                    "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-soft",
-                    isSelected ? "bg-primary/10 text-primary" : "bg-accent text-muted-foreground"
+                    "h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                    isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                   )}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-4 w-4" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{mode.name}</p>
-                    {isSelected && (
-                      <span className="badge badge-approved">Active</span>
-                    )}
+                    <p className="font-medium text-sm">{mode.name}</p>
+                    {isSelected && <Badge variant="default">Active</Badge>}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {mode.description}
                   </p>
                 </div>
@@ -262,105 +263,115 @@ function SettingsContent() {
       </section>
 
       {/* AI Model */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg font-semibold">AI Model</h2>
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">AI Model</h2>
         </div>
-        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
-          <select
-            value={currentSettings?.llm_model || ""}
-            onChange={(e) => updateMutation.mutate({ llm_model: e.target.value })}
-            className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft"
-          >
-            {availableModels.map((model: any) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <Select
+              value={currentSettings?.llm_model || ""}
+              onValueChange={(value) => updateMutation.mutate({ llm_model: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableModels.map((model: any) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Temperature */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Sliders className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg font-semibold">
-            Creativity Level
-          </h2>
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sliders className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Creativity Level</h2>
         </div>
-        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Temperature</span>
-            <span className="font-mono text-sm font-medium bg-accent px-2 py-1 rounded-lg">
-              {currentSettings?.llm_temperature || 0.7}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.1"
-            value={currentSettings?.llm_temperature || 0.7}
-            onChange={(e) =>
-              updateMutation.mutate({ llm_temperature: parseFloat(e.target.value) })
-            }
-            className="w-full h-2 bg-accent rounded-full appearance-none cursor-pointer accent-primary"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
-            <span>Precise & Focused</span>
-            <span>Creative & Varied</span>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-muted-foreground">Temperature</span>
+              <span className="font-mono text-xs font-medium bg-muted px-2 py-1 rounded-md">
+                {currentSettings?.llm_temperature || 0.7}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.1"
+              value={currentSettings?.llm_temperature || 0.7}
+              onChange={(e) =>
+                updateMutation.mutate({ llm_temperature: parseFloat(e.target.value) })
+              }
+              className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-2">
+              <span>Precise & Focused</span>
+              <span>Creative & Varied</span>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* System Prompt */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg font-semibold">AI Instructions</h2>
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">AI Instructions</h2>
         </div>
-        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
-          <textarea
-            value={systemPrompt}
-            onChange={(e) => {
-              setSystemPrompt(e.target.value);
-              debouncedSave("system_prompt", e.target.value);
-            }}
-            placeholder="Custom instructions for the AI when drafting responses...
+        <Card>
+          <CardContent className="p-4">
+            <Textarea
+              value={systemPrompt}
+              onChange={(e) => {
+                setSystemPrompt(e.target.value);
+                debouncedSave("system_prompt", e.target.value);
+              }}
+              placeholder="Custom instructions for the AI when drafting responses...
 
 Example: Always be concise and professional. Sign off with just my first name. Never use exclamation marks."
-            rows={6}
-            className="w-full p-3 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft resize-none font-mono text-sm"
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            These instructions guide how the AI writes email responses. Be specific about tone, style, and any rules to follow.
-          </p>
-        </div>
+              rows={5}
+              className="font-mono text-sm resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              These instructions guide how the AI writes email responses. Be specific about tone, style, and any rules to follow.
+            </p>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Signature */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <FileSignature className="h-5 w-5 text-primary" />
-          <h2 className="font-display text-lg font-semibold">Email Signature</h2>
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <FileSignature className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Email Signature</h2>
         </div>
-        <div className="bg-card rounded-2xl shadow-warm border border-border p-5">
-          <textarea
-            value={signature}
-            onChange={(e) => {
-              setSignature(e.target.value);
-              debouncedSave("signature", e.target.value);
-            }}
-            placeholder="Enter your email signature..."
-            rows={4}
-            className="w-full p-3 border border-border rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-soft resize-none"
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            This signature will be appended to all AI-generated emails
-          </p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <Textarea
+              value={signature}
+              onChange={(e) => {
+                setSignature(e.target.value);
+                debouncedSave("signature", e.target.value);
+              }}
+              placeholder="Enter your email signature..."
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              This signature will be appended to all AI-generated emails
+            </p>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
@@ -369,12 +380,7 @@ Example: Always be concise and professional. Sign off with just my first name. N
 export default function SettingsPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-          <p>Loading settings...</p>
-        </div>
-      }
+      fallback={<LoadingSpinner className="py-16" label="Loading settings..." />}
     >
       <SettingsContent />
     </Suspense>
