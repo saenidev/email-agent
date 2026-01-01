@@ -1,6 +1,7 @@
 """ARQ background task definitions."""
 
 import logging
+from datetime import UTC
 from uuid import UUID
 
 from sqlalchemy import case, select, update
@@ -115,11 +116,11 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                         )
                     )
                     if draft_exists.scalar_one_or_none():
-                        from datetime import datetime, timezone
+                        from datetime import datetime
 
                         existing_email.is_processed = True
                         existing_email.requires_response = True
-                        existing_email.processed_at = datetime.now(timezone.utc)
+                        existing_email.processed_at = datetime.now(UTC)
                         await db.flush()
                         continue
 
@@ -174,9 +175,7 @@ async def poll_all_users(ctx: dict) -> dict:
     """Poll emails for all users with Gmail connected."""
     async with async_session_maker() as db:
         result = await db.execute(
-            select(User.id)
-            .join(GmailToken)
-            .where(User.is_active == True)  # noqa: E712
+            select(User.id).join(GmailToken).where(User.is_active == True)  # noqa: E712
         )
         user_ids = [str(uid) for (uid,) in result.all()]
 
@@ -224,9 +223,7 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
             thread_id = draft.email.thread_id if draft.email else None
             if draft.email:
                 try:
-                    original_message = await gmail_service.get_message_async(
-                        draft.email.gmail_id
-                    )
+                    original_message = await gmail_service.get_message_async(draft.email.gmail_id)
                     reply_message_id = original_message.message_id
                     thread_id = original_message.thread_id or thread_id
                 except Exception as e:
@@ -245,10 +242,10 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
             )
 
             # Update draft status
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             draft.status = "sent"
-            draft.sent_at = datetime.now(timezone.utc)
+            draft.sent_at = datetime.now(UTC)
 
             # Log activity
             await log_activity(
@@ -272,7 +269,7 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
 
 async def refresh_gmail_tokens(ctx: dict) -> dict:
     """Refresh expiring Gmail tokens."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
@@ -281,7 +278,7 @@ async def refresh_gmail_tokens(ctx: dict) -> dict:
     from app.core.encryption import decrypt_token, encrypt_token
 
     settings = get_settings()
-    expiry_threshold = datetime.now(timezone.utc) + timedelta(hours=1)
+    expiry_threshold = datetime.now(UTC) + timedelta(hours=1)
 
     async with async_session_maker() as db:
         result = await db.execute(
@@ -405,9 +402,7 @@ async def generate_draft_for_email(
             await _update_batch_job_completed(db, batch_job_id)
 
             await db.commit()
-            logger.info(
-                "Generated draft %s for email %s", draft.id, email_id
-            )
+            logger.info("Generated draft %s for email %s", draft.id, email_id)
             return {"status": "success", "draft_id": str(draft.id)}
 
         except Exception as e:

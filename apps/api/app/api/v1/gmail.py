@@ -38,6 +38,7 @@ def _verify_state(state: str) -> str | None:
         return None
     return user_id
 
+
 router = APIRouter()
 settings = get_settings()
 
@@ -96,9 +97,7 @@ async def gmail_auth_callback(
                 history_id = None
 
         # Check if token already exists for this user
-        result = await db.execute(
-            select(GmailToken).where(GmailToken.user_id == user_id)
-        )
+        result = await db.execute(select(GmailToken).where(GmailToken.user_id == user_id))
         existing_token = result.scalar_one_or_none()
 
         if existing_token:
@@ -135,9 +134,7 @@ async def get_gmail_status(
     db: AsyncSession = Depends(get_db),
 ) -> GmailStatus:
     """Check Gmail connection status."""
-    result = await db.execute(
-        select(GmailToken).where(GmailToken.user_id == current_user.id)
-    )
+    result = await db.execute(select(GmailToken).where(GmailToken.user_id == current_user.id))
     token = result.scalar_one_or_none()
 
     if token:
@@ -152,9 +149,7 @@ async def disconnect_gmail(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     """Revoke Gmail access and delete stored tokens."""
-    result = await db.execute(
-        select(GmailToken).where(GmailToken.user_id == current_user.id)
-    )
+    result = await db.execute(select(GmailToken).where(GmailToken.user_id == current_user.id))
     token = result.scalar_one_or_none()
 
     if token:

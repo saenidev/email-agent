@@ -29,8 +29,12 @@ class User(Base, UUIDMixin, TimestampMixin):
     settings: Mapped["UserSettings | None"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    emails: Mapped[list["Email"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    drafts: Mapped[list["Draft"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    emails: Mapped[list["Email"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    drafts: Mapped[list["Draft"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     rules: Mapped[list["Rule"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     batch_draft_jobs: Mapped[list["BatchDraftJob"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

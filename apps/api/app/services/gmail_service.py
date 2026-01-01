@@ -6,9 +6,9 @@ import functools
 import html
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from email.utils import getaddresses, parseaddr
+from datetime import UTC, datetime
 from email.mime.text import MIMEText
+from email.utils import getaddresses, parseaddr
 from typing import Any
 
 import anyio
@@ -76,9 +76,7 @@ class GmailService:
         return results.get("messages", [])
 
     async def _run_async(self, func, *args, **kwargs):
-        return await anyio.to_thread.run_sync(
-            functools.partial(func, *args, **kwargs)
-        )
+        return await anyio.to_thread.run_sync(functools.partial(func, *args, **kwargs))
 
     async def list_messages_async(
         self,
@@ -91,10 +89,7 @@ class GmailService:
     def get_message(self, message_id: str) -> EmailMessage:
         """Fetch and parse a full message by ID."""
         msg = (
-            self.service.users()
-            .messages()
-            .get(userId="me", id=message_id, format="full")
-            .execute()
+            self.service.users().messages().get(userId="me", id=message_id, format="full").execute()
         )
         return self._parse_message(msg)
 
@@ -102,9 +97,7 @@ class GmailService:
         """Async wrapper for get_message."""
         return await self._run_async(self.get_message, message_id)
 
-    def get_history(
-        self, start_history_id: int
-    ) -> tuple[list[dict[str, str]], int | None]:
+    def get_history(self, start_history_id: int) -> tuple[list[dict[str, str]], int | None]:
         """Get messages since history_id for incremental sync."""
         try:
             message_ids: list[dict[str, str]] = []
@@ -168,9 +161,7 @@ class GmailService:
         if thread_id:
             body_dict["threadId"] = thread_id
 
-        result = (
-            self.service.users().messages().send(userId="me", body=body_dict).execute()
-        )
+        result = self.service.users().messages().send(userId="me", body=body_dict).execute()
         return result["id"]
 
     async def send_message_async(
@@ -226,7 +217,7 @@ class GmailService:
 
         # Parse date
         internal_date = int(msg.get("internalDate", 0))
-        received_at = datetime.fromtimestamp(internal_date / 1000, tz=timezone.utc)
+        received_at = datetime.fromtimestamp(internal_date / 1000, tz=UTC)
 
         return EmailMessage(
             gmail_id=msg["id"],

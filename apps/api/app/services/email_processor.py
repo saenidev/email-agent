@@ -1,6 +1,7 @@
 """Email processor - main orchestration logic for the email agent."""
 
 import logging
+from datetime import UTC
 from enum import Enum
 from uuid import UUID
 
@@ -55,9 +56,7 @@ class EmailProcessor:
         """Process a single email through the agent pipeline."""
         try:
             # Step 1: Check if email needs response
-            needs_response, reason = await self.llm.should_respond(
-                email.body_text, email.subject
-            )
+            needs_response, reason = await self.llm.should_respond(email.body_text, email.subject)
 
             if not needs_response:
                 logger.info(f"Email {email.gmail_id} doesn't need response: {reason}")
@@ -250,7 +249,7 @@ class EmailProcessor:
         requires_response: bool | None = None,
     ) -> None:
         """Update email status in database."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         result = await self.db.execute(
             select(Email).where(
@@ -264,7 +263,7 @@ class EmailProcessor:
             email.is_processed = is_processed
             if requires_response is not None:
                 email.requires_response = requires_response
-            email.processed_at = datetime.now(timezone.utc)
+            email.processed_at = datetime.now(UTC)
             await self.db.flush()
 
     async def _create_draft(
@@ -299,9 +298,9 @@ class EmailProcessor:
         if existing_draft:
             return existing_draft
 
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        sent_at = datetime.now(timezone.utc) if status == "auto_sent" else None
+        sent_at = datetime.now(UTC) if status == "auto_sent" else None
         draft = Draft(
             user_id=self.user_id,
             email_id=email_record.id,
@@ -341,9 +340,7 @@ class EmailProcessor:
 
 async def get_user_settings(db: AsyncSession, user_id: UUID) -> UserSettings | None:
     """Get user settings from database."""
-    result = await db.execute(
-        select(UserSettings).where(UserSettings.user_id == user_id)
-    )
+    result = await db.execute(select(UserSettings).where(UserSettings.user_id == user_id))
     return result.scalar_one_or_none()
 
 

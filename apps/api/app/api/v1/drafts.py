@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
@@ -10,7 +10,6 @@ from sqlalchemy.orm import selectinload
 from app.db.session import get_db
 from app.dependencies import CurrentUser
 from app.models.draft import Draft
-from app.models.email import Email
 from app.schemas.draft import DraftDetail, DraftList, DraftSummary, DraftUpdate
 from app.schemas.email import EmailSummary
 from app.services.activity_service import log_activity
@@ -164,7 +163,7 @@ async def approve_draft(
 
     # Update status and enqueue send job
     draft.status = "approved"
-    draft.reviewed_at = datetime.now(timezone.utc)
+    draft.reviewed_at = datetime.now(UTC)
     await db.flush()
 
     # Log activity
@@ -227,7 +226,7 @@ async def reject_draft(
         )
 
     draft.status = "rejected"
-    draft.reviewed_at = datetime.now(timezone.utc)
+    draft.reviewed_at = datetime.now(UTC)
     await db.flush()
 
     # Log activity

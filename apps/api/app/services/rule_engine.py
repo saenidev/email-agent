@@ -12,6 +12,7 @@ from app.services.gmail_service import EmailMessage
 
 logger = logging.getLogger(__name__)
 
+
 class FieldOperator(str, Enum):
     """Operators for rule conditions."""
 
@@ -49,7 +50,7 @@ class RuleGroup:
     """A group of conditions with AND/OR logic."""
 
     operator: str  # "AND" or "OR"
-    conditions: list[RuleCondition | "RuleGroup"]
+    conditions: list[RuleCondition | RuleGroup]
 
 
 @dataclass
@@ -73,7 +74,7 @@ class RuleEngine:
         self.rules = sorted(rules, key=lambda r: r.priority)
 
     @classmethod
-    def from_db_rules(cls, db_rules: list[Any]) -> "RuleEngine":
+    def from_db_rules(cls, db_rules: list[Any]) -> RuleEngine:
         """Create engine from database rule models."""
         rules = []
         for db_rule in db_rules:

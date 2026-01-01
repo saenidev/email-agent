@@ -46,4 +46,4 @@ class BatchDraftJob(Base, UUIDMixin, TimestampMixin):
     )
 
     # Relationship
-    user: Mapped["User"] = relationship(back_populates="batch_draft_jobs")
+    user: Mapped[User] = relationship(back_populates="batch_draft_jobs")

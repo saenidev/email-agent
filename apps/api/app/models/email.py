@@ -49,4 +49,6 @@ class Email(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="emails")
-    drafts: Mapped[list["Draft"]] = relationship(back_populates="email", cascade="all, delete-orphan")
+    drafts: Mapped[list["Draft"]] = relationship(
+        back_populates="email", cascade="all, delete-orphan"
+    )

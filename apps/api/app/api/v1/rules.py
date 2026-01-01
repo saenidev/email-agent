@@ -19,9 +19,7 @@ async def list_rules(
 ) -> list[Rule]:
     """List all rules."""
     result = await db.execute(
-        select(Rule)
-        .where(Rule.user_id == current_user.id)
-        .order_by(Rule.priority.asc())
+        select(Rule).where(Rule.user_id == current_user.id).order_by(Rule.priority.asc())
     )
     return list(result.scalars().all())
 
@@ -172,7 +170,8 @@ async def test_rule(
 
     from app.models.email import Email
     from app.services.gmail_service import EmailMessage
-    from app.services.rule_engine import Rule as RuleModel, RuleEngine
+    from app.services.rule_engine import Rule as RuleModel
+    from app.services.rule_engine import RuleEngine
 
     # Get email
     result = await db.execute(

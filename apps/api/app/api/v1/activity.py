@@ -24,9 +24,7 @@ async def list_activities(
     # Build query
     query = select(ActivityLog).where(ActivityLog.user_id == current_user.id)
     count_query = (
-        select(func.count())
-        .select_from(ActivityLog)
-        .where(ActivityLog.user_id == current_user.id)
+        select(func.count()).select_from(ActivityLog).where(ActivityLog.user_id == current_user.id)
     )
 
     if activity_type:

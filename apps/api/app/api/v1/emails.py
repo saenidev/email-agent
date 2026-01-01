@@ -77,9 +77,7 @@ async def list_unreplied_emails(
     )
 
     # Count total
-    count_result = await db.execute(
-        select(func.count()).select_from(base_query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
     total = count_result.scalar() or 0
 
     # Get paginated emails
