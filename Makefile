@@ -1,4 +1,4 @@
-.PHONY: help install dev api web worker db-up db-down migrate test lint
+.PHONY: help install dev dev-all api web worker db-up db-down migrate test lint
 
 help:
 	@echo "Email Agent - Development Commands"
@@ -10,10 +10,10 @@ help:
 	@echo "  make migrate       Run database migrations"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev           Instructions for starting all services"
-	@echo "  make api           Start FastAPI backend"
-	@echo "  make web           Start Next.js frontend (or: pnpm dev)"
-	@echo "  make worker        Start ARQ worker"
+	@echo "  make dev-all       Start ALL services in one terminal"
+	@echo "  make api           Start FastAPI backend only"
+	@echo "  make web           Start Next.js frontend only"
+	@echo "  make worker        Start ARQ worker only"
 	@echo ""
 	@echo "Quality:"
 	@echo "  make lint          Run linters"
@@ -46,14 +46,12 @@ web:
 worker:
 	cd apps/api && uv run arq app.workers.worker.WorkerSettings
 
-dev:
-	@echo "Starting all services..."
+dev-all:
 	@make db-up
-	@echo ""
-	@echo "Run these in separate terminals:"
-	@echo "  make api      # FastAPI on :8001"
-	@echo "  make web      # Next.js on :3000 (or: pnpm dev)"
-	@echo "  make worker   # ARQ background worker"
+	pnpm dev:all
+
+dev:
+	@make dev-all
 
 test:
 	cd apps/api && uv run pytest
