@@ -56,6 +56,8 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                     await db.flush()
                 else:
                     # History invalid/expired, fall back to full sync
+                    user.gmail_token.history_id = None
+                    await db.flush()
                     messages = await gmail_service.list_messages_async(
                         query="is:inbox is:unread",
                         max_results=20,
@@ -66,6 +68,20 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                     query="is:inbox is:unread",
                     max_results=20,
                 )
+
+            if user.gmail_token.history_id is None:
+                try:
+                    profile = await gmail_service.get_profile_async()
+                    raw_history_id = profile.get("history_id")
+                    if raw_history_id:
+                        user.gmail_token.history_id = int(raw_history_id)
+                        await db.flush()
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to fetch history id for user %s: %s",
+                        user_id,
+                        exc,
+                    )
 
             if not messages:
                 return {"status": "success", "processed": 0}
@@ -88,29 +104,58 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                         Email.gmail_id == msg_ref["id"],
                     )
                 )
-                if existing.scalar_one_or_none():
+                existing_email = existing.scalar_one_or_none()
+                if existing_email and existing_email.is_processed:
                     continue
+                if existing_email and not existing_email.is_processed:
+                    draft_exists = await db.execute(
+                        select(Draft.id).where(
+                            Draft.email_id == existing_email.id,
+                            Draft.status.in_(["pending", "approved", "sent", "auto_sent"]),
+                        )
+                    )
+                    if draft_exists.scalar_one_or_none():
+                        from datetime import datetime, timezone
+
+                        existing_email.is_processed = True
+                        existing_email.requires_response = True
+                        existing_email.processed_at = datetime.now(timezone.utc)
+                        await db.flush()
+                        continue
 
                 # Fetch full message
                 email_msg = await gmail_service.get_message_async(msg_ref["id"])
 
                 # Store in database
-                email = Email(
-                    user_id=user.id,
-                    gmail_id=email_msg.gmail_id,
-                    thread_id=email_msg.thread_id,
-                    from_email=email_msg.from_email,
-                    from_name=email_msg.from_name,
-                    to_emails=email_msg.to_emails,
-                    cc_emails=email_msg.cc_emails,
-                    subject=email_msg.subject,
-                    snippet=email_msg.snippet,
-                    body_text=email_msg.body_text,
-                    body_html=email_msg.body_html,
-                    received_at=email_msg.received_at,
-                )
-                db.add(email)
-                await db.flush()
+                if existing_email:
+                    existing_email.thread_id = email_msg.thread_id
+                    existing_email.from_email = email_msg.from_email
+                    existing_email.from_name = email_msg.from_name
+                    existing_email.to_emails = email_msg.to_emails
+                    existing_email.cc_emails = email_msg.cc_emails
+                    existing_email.subject = email_msg.subject
+                    existing_email.snippet = email_msg.snippet
+                    existing_email.body_text = email_msg.body_text
+                    existing_email.body_html = email_msg.body_html
+                    existing_email.received_at = email_msg.received_at
+                    await db.flush()
+                else:
+                    email = Email(
+                        user_id=user.id,
+                        gmail_id=email_msg.gmail_id,
+                        thread_id=email_msg.thread_id,
+                        from_email=email_msg.from_email,
+                        from_name=email_msg.from_name,
+                        to_emails=email_msg.to_emails,
+                        cc_emails=email_msg.cc_emails,
+                        subject=email_msg.subject,
+                        snippet=email_msg.snippet,
+                        body_text=email_msg.body_text,
+                        body_html=email_msg.body_html,
+                        received_at=email_msg.received_at,
+                    )
+                    db.add(email)
+                    await db.flush()
 
                 # Process the email
                 await processor.process_email(email_msg, settings)
@@ -293,6 +338,7 @@ async def generate_draft_for_email(
 
             if not email:
                 await _update_batch_job_failed(db, batch_job_id)
+                await db.commit()
                 return {"status": "error", "reason": "email_not_found"}
 
             # Check if draft already exists (prevent duplicates)
@@ -304,12 +350,14 @@ async def generate_draft_for_email(
             )
             if existing_result.scalar_one_or_none():
                 await _update_batch_job_completed(db, batch_job_id)
+                await db.commit()
                 return {"status": "skipped", "reason": "draft_exists"}
 
             # Get user settings
             settings = email.user.settings
             if not settings:
                 await _update_batch_job_failed(db, batch_job_id)
+                await db.commit()
                 return {"status": "error", "reason": "no_settings"}
 
             # Build EmailContext and generate response

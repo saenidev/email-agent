@@ -274,6 +274,12 @@ async def regenerate_draft(
             detail="Original email not found",
         )
 
+    if draft.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only regenerate pending drafts",
+        )
+
     # Get user settings and regenerate
     from app.models.user_settings import UserSettings
     from app.services.openrouter_service import EmailContext, OpenRouterService

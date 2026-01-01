@@ -87,6 +87,13 @@ async def gmail_auth_callback(
             refresh_token=tokens["refresh_token"],
         )
         profile = await gmail_service.get_profile_async()
+        history_id = None
+        raw_history_id = profile.get("history_id")
+        if raw_history_id:
+            try:
+                history_id = int(raw_history_id)
+            except (TypeError, ValueError):
+                history_id = None
 
         # Check if token already exists for this user
         result = await db.execute(
@@ -101,6 +108,7 @@ async def gmail_auth_callback(
             existing_token.refresh_token_encrypted = encrypt_token(tokens["refresh_token"])
             existing_token.token_expiry = tokens.get("expiry")
             existing_token.scopes = tokens.get("scopes")
+            existing_token.history_id = history_id
         else:
             # Create new token record
             gmail_token = GmailToken(
@@ -110,6 +118,7 @@ async def gmail_auth_callback(
                 refresh_token_encrypted=encrypt_token(tokens["refresh_token"]),
                 token_expiry=tokens.get("expiry"),
                 scopes=tokens.get("scopes"),
+                history_id=history_id,
             )
             db.add(gmail_token)
 

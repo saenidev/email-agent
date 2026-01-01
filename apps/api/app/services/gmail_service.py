@@ -3,6 +3,8 @@
 import base64
 import binascii
 import functools
+import html
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import getaddresses, parseaddr
@@ -105,23 +107,32 @@ class GmailService:
     ) -> tuple[list[dict[str, str]], int | None]:
         """Get messages since history_id for incremental sync."""
         try:
-            results = (
-                self.service.users()
-                .history()
-                .list(
-                    userId="me",
-                    startHistoryId=start_history_id,
-                    historyTypes=["messageAdded"],
-                )
-                .execute()
-            )
-            history = results.get("history", [])
-            new_history_id = results.get("historyId")
+            message_ids: list[dict[str, str]] = []
+            new_history_id: str | None = None
+            page_token: str | None = None
 
-            message_ids = []
-            for record in history:
-                for msg in record.get("messagesAdded", []):
-                    message_ids.append({"id": msg["message"]["id"]})
+            while True:
+                results = (
+                    self.service.users()
+                    .history()
+                    .list(
+                        userId="me",
+                        startHistoryId=start_history_id,
+                        historyTypes=["messageAdded"],
+                        pageToken=page_token,
+                    )
+                    .execute()
+                )
+                history = results.get("history", [])
+                new_history_id = results.get("historyId") or new_history_id
+
+                for record in history:
+                    for msg in record.get("messagesAdded", []):
+                        message_ids.append({"id": msg["message"]["id"]})
+
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
 
             return message_ids, int(new_history_id) if new_history_id else None
         except Exception:
@@ -180,12 +191,15 @@ class GmailService:
             thread_id,
         )
 
-    def get_profile(self) -> dict[str, str]:
-        """Get the authenticated user's email address."""
+    def get_profile(self) -> dict[str, str | None]:
+        """Get the authenticated user's email address and history id."""
         profile = self.service.users().getProfile(userId="me").execute()
-        return {"email": profile["emailAddress"]}
+        return {
+            "email": profile.get("emailAddress"),
+            "history_id": profile.get("historyId"),
+        }
 
-    async def get_profile_async(self) -> dict[str, str]:
+    async def get_profile_async(self) -> dict[str, str | None]:
         """Async wrapper for get_profile."""
         return await self._run_async(self.get_profile)
 
@@ -267,4 +281,18 @@ class GmailService:
             if data:
                 text_body = self._decode_base64url(data)
 
+        if not text_body and html_body:
+            text_body = self._strip_html(html_body)
+
         return text_body, html_body
+
+    @staticmethod
+    def _strip_html(html_body: str) -> str:
+        """Best-effort HTML to text fallback."""
+        if not html_body:
+            return ""
+        text = re.sub(r"(?i)<br\s*/?>", "\n", html_body)
+        text = re.sub(r"(?i)</p>", "\n", text)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = html.unescape(text)
+        return text.strip()

@@ -186,7 +186,7 @@ class RuleEngine:
             if isinstance(target, str):
                 target = target.lower()
             elif isinstance(target, list):
-                target = [t.lower() for t in target]
+                target = [t.lower() for t in target if isinstance(t, str)]
 
         # Evaluate based on operator
         match condition.operator:

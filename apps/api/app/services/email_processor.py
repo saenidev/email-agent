@@ -183,7 +183,8 @@ class EmailProcessor:
                 return ProcessingResult.DRAFT_CREATED
 
         except Exception as e:
-            logger.error(f"Error processing email {email.gmail_id}: {e}")
+            logger.exception("Error processing email %s: %s", email.gmail_id, e)
+            await self._update_email_status(email.gmail_id, is_processed=False)
             return ProcessingResult.ERROR
 
     def _should_auto_send(
@@ -287,6 +288,16 @@ class EmailProcessor:
 
         if not email_record:
             raise ValueError(f"Email {email.gmail_id} not found in database")
+
+        existing = await self.db.execute(
+            select(Draft).where(
+                Draft.email_id == email_record.id,
+                Draft.status.in_(["pending", "approved", "sent", "auto_sent"]),
+            )
+        )
+        existing_draft = existing.scalar_one_or_none()
+        if existing_draft:
+            return existing_draft
 
         from datetime import datetime, timezone
 
