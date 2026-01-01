@@ -119,7 +119,7 @@ async def update_draft(
         draft.original_body_text = draft.body_text
 
     # Update fields
-    update_data = draft_data.model_dump(exclude_unset=True)
+    update_data = draft_data.model_dump(exclude_unset=True, exclude_none=True)
     for field, value in update_data.items():
         setattr(draft, field, value)
 

@@ -22,6 +22,7 @@ export default function EmailsPage() {
   const queryClient = useQueryClient();
   const [showUnrepliedOnly, setShowUnrepliedOnly] = useState(false);
   const [batchJobId, setBatchJobId] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
 
   // Fetch emails (either all or unreplied)
   const { data, isLoading, refetch, isFetching } = useQuery({
@@ -46,12 +47,24 @@ export default function EmailsPage() {
     deselectAll();
   }, [showUnrepliedOnly, deselectAll]);
 
+  useEffect(() => {
+    if (selectionError && selectedCount <= 20) {
+      setSelectionError(null);
+    }
+  }, [selectedCount, selectionError]);
+
   // Mutation for generating drafts
   const generateDraftsMutation = useMutation({
     mutationFn: (emailIds: string[]) => emailsApi.generateDrafts(emailIds),
     onSuccess: (response) => {
       setBatchJobId(response.data.id);
       deselectAll();
+      setSelectionError(null);
+    },
+    onError: (error: any) => {
+      setSelectionError(
+        error?.response?.data?.detail || "Failed to generate drafts"
+      );
     },
   });
 
@@ -88,6 +101,10 @@ export default function EmailsPage() {
   };
 
   const handleGenerateDrafts = () => {
+    if (selectedCount > 20) {
+      setSelectionError("Select up to 20 emails at a time.");
+      return;
+    }
     if (selectedCount > 0) {
       generateDraftsMutation.mutate(selectedIds);
     }
@@ -160,7 +177,7 @@ export default function EmailsPage() {
           </div>
           <button
             onClick={handleGenerateDrafts}
-            disabled={generateDraftsMutation.isPending}
+            disabled={generateDraftsMutation.isPending || selectedCount > 20}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium transition-soft hover:opacity-90 disabled:opacity-50"
           >
             {generateDraftsMutation.isPending ? (
@@ -170,6 +187,11 @@ export default function EmailsPage() {
             )}
             Generate Drafts
           </button>
+        </div>
+      )}
+      {selectionError && (
+        <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 rounded-xl animate-fade-in">
+          {selectionError}
         </div>
       )}
 

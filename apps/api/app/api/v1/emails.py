@@ -161,9 +161,11 @@ async def generate_drafts_for_emails(
     db.add(batch_job)
     await db.flush()
     await db.refresh(batch_job)
+    await db.commit()
 
     # Enqueue worker tasks
     settings = get_settings()
+    redis = None
     try:
         redis = await create_pool(RedisSettings.from_dsn(str(settings.redis_url)))
         for email_id in emails_to_process:
@@ -172,15 +174,17 @@ async def generate_drafts_for_emails(
                 str(email_id),
                 str(batch_job.id),
             )
-        await redis.close()
     except Exception as e:
         logger.exception("Failed to enqueue draft generation jobs: %s", e)
         batch_job.status = "failed"
-        await db.flush()
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to start draft generation",
         )
+    finally:
+        if redis is not None:
+            await redis.close()
 
     return BatchDraftJobStatus.model_validate(batch_job)
 

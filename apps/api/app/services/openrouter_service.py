@@ -72,7 +72,7 @@ class OpenRouterService:
             max_tokens=max_tokens,
         )
 
-        content = response.choices[0].message.content or ""
+        content = response.choices[0].message.content or "" if response.choices else ""
         logger.debug(
             "LLM response from %s: length=%d, preview=%s",
             used_model,
@@ -112,7 +112,7 @@ Examples that DO require response:
             max_tokens=200,
         )
 
-        content = response.choices[0].message.content or ""
+        content = response.choices[0].message.content or "" if response.choices else ""
 
         requires_response = False
         reason = "Unable to determine"
@@ -142,6 +142,8 @@ Examples that DO require response:
         categories: list[str],
     ) -> tuple[str, float]:
         """Classify an email into one of the provided categories."""
+        if not categories:
+            return "", 0.0
         categories_str = ", ".join(categories)
         prompt = f"""Classify this email into one of these categories: {categories_str}
 
@@ -159,7 +161,7 @@ CONFIDENCE: [0.0 to 1.0]"""
             max_tokens=100,
         )
 
-        content = response.choices[0].message.content or ""
+        content = response.choices[0].message.content or "" if response.choices else ""
 
         # Parse response
         category = categories[0]  # Default

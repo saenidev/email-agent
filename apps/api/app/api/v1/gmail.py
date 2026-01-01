@@ -86,7 +86,7 @@ async def gmail_auth_callback(
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
         )
-        profile = gmail_service.get_profile()
+        profile = await gmail_service.get_profile_async()
 
         # Check if token already exists for this user
         result = await db.execute(

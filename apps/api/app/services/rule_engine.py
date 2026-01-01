@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -9,6 +10,7 @@ from typing import Any
 
 from app.services.gmail_service import EmailMessage
 
+logger = logging.getLogger(__name__)
 
 class FieldOperator(str, Enum):
     """Operators for rule conditions."""
@@ -75,14 +77,23 @@ class RuleEngine:
         """Create engine from database rule models."""
         rules = []
         for db_rule in db_rules:
-            conditions = cls._parse_conditions(db_rule.conditions)
+            try:
+                conditions = cls._parse_conditions(db_rule.conditions)
+                action = RuleAction(db_rule.action)
+            except (TypeError, ValueError, KeyError) as exc:
+                logger.warning(
+                    "Skipping invalid rule %s: %s",
+                    getattr(db_rule, "id", "?"),
+                    exc,
+                )
+                continue
             rules.append(
                 Rule(
                     id=str(db_rule.id),
                     name=db_rule.name,
                     priority=db_rule.priority,
                     conditions=conditions,
-                    action=RuleAction(db_rule.action),
+                    action=action,
                     action_config=db_rule.action_config,
                     is_active=db_rule.is_active,
                 )
@@ -92,22 +103,36 @@ class RuleEngine:
     @classmethod
     def _parse_conditions(cls, data: dict[str, Any]) -> RuleGroup:
         """Parse conditions from JSON structure."""
+        if not isinstance(data, dict):
+            return RuleGroup(operator="AND", conditions=[])
         operator = str(data.get("operator", "AND")).upper()
         if operator not in {"AND", "OR"}:
             operator = "AND"
         conditions: list[RuleCondition | RuleGroup] = []
 
         for item in data.get("rules", []):
+            if not isinstance(item, dict):
+                continue
             if "operator" in item and "rules" in item:
                 # Nested group
                 conditions.append(cls._parse_conditions(item))
             else:
                 # Single condition
+                try:
+                    field = item["field"]
+                    operator_value = item["operator"]
+                    value = item["value"]
+                except KeyError:
+                    continue
+                try:
+                    operator_enum = FieldOperator(operator_value)
+                except ValueError:
+                    continue
                 conditions.append(
                     RuleCondition(
-                        field=item["field"],
-                        operator=FieldOperator(item["operator"]),
-                        value=item["value"],
+                        field=field,
+                        operator=operator_enum,
+                        value=value,
                         case_sensitive=item.get("case_sensitive", False),
                     )
                 )

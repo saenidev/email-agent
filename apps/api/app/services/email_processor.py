@@ -95,7 +95,7 @@ class EmailProcessor:
                     return ProcessingResult.ERROR
 
                 forward_body = self._format_forward_body(email)
-                self.gmail.send_message(
+                await self.gmail.send_message_async(
                     to=forward_targets,
                     subject=f"Fwd: {email.subject}",
                     body=forward_body,
@@ -136,7 +136,7 @@ class EmailProcessor:
 
             if should_auto_send:
                 # Auto-send the response
-                self.gmail.send_message(
+                await self.gmail.send_message_async(
                     to=[email.from_email],
                     subject=f"Re: {email.subject}",
                     body=draft_response.body,
@@ -287,6 +287,9 @@ class EmailProcessor:
         if not email_record:
             raise ValueError(f"Email {email.gmail_id} not found in database")
 
+        from datetime import datetime, timezone
+
+        sent_at = datetime.now(timezone.utc) if status == "auto_sent" else None
         draft = Draft(
             user_id=self.user_id,
             email_id=email_record.id,
@@ -297,6 +300,7 @@ class EmailProcessor:
             llm_model_used=model,
             llm_reasoning=reasoning,
             matched_rule_id=UUID(matched_rule.id) if matched_rule else None,
+            sent_at=sent_at,
         )
 
         self.db.add(draft)

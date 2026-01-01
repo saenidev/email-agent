@@ -1,11 +1,15 @@
 """Gmail API service for reading and sending emails."""
 
 import base64
+import binascii
+import functools
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from email.utils import getaddresses, parseaddr
 from email.mime.text import MIMEText
 from typing import Any
 
+import anyio
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
@@ -69,6 +73,19 @@ class GmailService:
         )
         return results.get("messages", [])
 
+    async def _run_async(self, func, *args, **kwargs):
+        return await anyio.to_thread.run_sync(
+            functools.partial(func, *args, **kwargs)
+        )
+
+    async def list_messages_async(
+        self,
+        query: str = "is:inbox is:unread",
+        max_results: int = 50,
+    ) -> list[dict[str, str]]:
+        """Async wrapper for list_messages."""
+        return await self._run_async(self.list_messages, query, max_results)
+
     def get_message(self, message_id: str) -> EmailMessage:
         """Fetch and parse a full message by ID."""
         msg = (
@@ -78,6 +95,10 @@ class GmailService:
             .execute()
         )
         return self._parse_message(msg)
+
+    async def get_message_async(self, message_id: str) -> EmailMessage:
+        """Async wrapper for get_message."""
+        return await self._run_async(self.get_message, message_id)
 
     def get_history(
         self, start_history_id: int
@@ -107,6 +128,12 @@ class GmailService:
             # History ID invalid or expired, need full sync
             return [], None
 
+    async def get_history_async(
+        self, start_history_id: int
+    ) -> tuple[list[dict[str, str]], int | None]:
+        """Async wrapper for get_history."""
+        return await self._run_async(self.get_history, start_history_id)
+
     def send_message(
         self,
         to: list[str],
@@ -135,10 +162,32 @@ class GmailService:
         )
         return result["id"]
 
+    async def send_message_async(
+        self,
+        to: list[str],
+        subject: str,
+        body: str,
+        reply_to_message_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> str:
+        """Async wrapper for send_message."""
+        return await self._run_async(
+            self.send_message,
+            to,
+            subject,
+            body,
+            reply_to_message_id,
+            thread_id,
+        )
+
     def get_profile(self) -> dict[str, str]:
         """Get the authenticated user's email address."""
         profile = self.service.users().getProfile(userId="me").execute()
         return {"email": profile["emailAddress"]}
+
+    async def get_profile_async(self) -> dict[str, str]:
+        """Async wrapper for get_profile."""
+        return await self._run_async(self.get_profile)
 
     def _parse_message(self, msg: dict) -> EmailMessage:
         """Parse Gmail API message into EmailMessage dataclass."""
@@ -146,15 +195,17 @@ class GmailService:
 
         # Parse from field
         from_raw = headers.get("from", "")
-        from_name, from_email = self._parse_email_address(from_raw)
+        parsed_name, parsed_email = parseaddr(from_raw)
+        from_name = parsed_name or None
+        from_email = parsed_email or from_raw.strip()
 
         # Parse to field
         to_raw = headers.get("to", "")
-        to_emails = [self._parse_email_address(e)[1] for e in to_raw.split(",") if e.strip()]
+        to_emails = [addr for _, addr in getaddresses([to_raw]) if addr]
 
         # Parse cc field
         cc_raw = headers.get("cc", "")
-        cc_emails = [self._parse_email_address(e)[1] for e in cc_raw.split(",") if e.strip()]
+        cc_emails = [addr for _, addr in getaddresses([cc_raw]) if addr]
 
         # Get body
         body_text, body_html = self._get_body(msg["payload"])
@@ -178,14 +229,16 @@ class GmailService:
             received_at=received_at,
         )
 
-    def _parse_email_address(self, raw: str) -> tuple[str | None, str]:
-        """Parse 'Name <email@example.com>' format."""
-        raw = raw.strip()
-        if "<" in raw and ">" in raw:
-            name = raw.split("<")[0].strip().strip('"')
-            email = raw.split("<")[1].split(">")[0].strip()
-            return name if name else None, email
-        return None, raw
+    @staticmethod
+    def _decode_base64url(data: str) -> str:
+        """Decode Gmail's base64url payloads, handling missing padding."""
+        if not data:
+            return ""
+        padded = data + "=" * (-len(data) % 4)
+        try:
+            return base64.urlsafe_b64decode(padded).decode("utf-8", errors="replace")
+        except (binascii.Error, ValueError):
+            return ""
 
     def _get_body(self, payload: dict) -> tuple[str, str | None]:
         """Extract text and HTML body from message payload."""
@@ -197,10 +250,10 @@ class GmailService:
                 mime_type = part.get("mimeType", "")
                 if mime_type == "text/plain":
                     data = part.get("body", {}).get("data", "")
-                    text_body = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                    text_body = self._decode_base64url(data)
                 elif mime_type == "text/html":
                     data = part.get("body", {}).get("data", "")
-                    html_body = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                    html_body = self._decode_base64url(data)
                 elif "parts" in part:
                     # Nested multipart
                     nested_text, nested_html = self._get_body(part)
@@ -212,6 +265,6 @@ class GmailService:
             # Single part message
             data = payload.get("body", {}).get("data", "")
             if data:
-                text_body = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                text_body = self._decode_base64url(data)
 
         return text_body, html_body

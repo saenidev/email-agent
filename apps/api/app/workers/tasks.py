@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import case, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -47,7 +47,7 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
 
             # Get new messages (incremental sync if history_id available)
             if user.gmail_token.history_id:
-                messages, new_history_id = gmail_service.get_history(
+                messages, new_history_id = await gmail_service.get_history_async(
                     user.gmail_token.history_id
                 )
                 if new_history_id:
@@ -55,13 +55,13 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                     await db.flush()
                 else:
                     # History invalid/expired, fall back to full sync
-                    messages = gmail_service.list_messages(
+                    messages = await gmail_service.list_messages_async(
                         query="is:inbox is:unread",
                         max_results=20,
                     )
             else:
                 # Full sync - get recent unread messages
-                messages = gmail_service.list_messages(
+                messages = await gmail_service.list_messages_async(
                     query="is:inbox is:unread",
                     max_results=20,
                 )
@@ -91,7 +91,7 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                     continue
 
                 # Fetch full message
-                email_msg = gmail_service.get_message(msg_ref["id"])
+                email_msg = await gmail_service.get_message_async(msg_ref["id"])
 
                 # Store in database
                 email = Email(
@@ -178,7 +178,9 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
             thread_id = draft.email.thread_id if draft.email else None
             if draft.email:
                 try:
-                    original_message = gmail_service.get_message(draft.email.gmail_id)
+                    original_message = await gmail_service.get_message_async(
+                        draft.email.gmail_id
+                    )
                     reply_message_id = original_message.message_id
                     thread_id = original_message.thread_id or thread_id
                 except Exception as e:
@@ -188,7 +190,7 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
                         e,
                     )
 
-            gmail_service.send_message(
+            await gmail_service.send_message_async(
                 to=draft.to_emails,
                 subject=draft.subject,
                 body=draft.body_text,
@@ -357,16 +359,23 @@ async def _update_batch_job_completed(db: AsyncSession, batch_job_id: str | None
     if not batch_job_id:
         return
 
-    result = await db.execute(
-        select(BatchDraftJob).where(BatchDraftJob.id == UUID(batch_job_id))
+    completed_expr = BatchDraftJob.completed_emails + 1
+    status_expr = case(
+        (
+            completed_expr + BatchDraftJob.failed_emails >= BatchDraftJob.total_emails,
+            "completed",
+        ),
+        else_=BatchDraftJob.status,
     )
-    batch_job = result.scalar_one_or_none()
-
-    if batch_job:
-        batch_job.completed_emails += 1
-        if batch_job.completed_emails + batch_job.failed_emails >= batch_job.total_emails:
-            batch_job.status = "completed"
-        await db.flush()
+    await db.execute(
+        update(BatchDraftJob)
+        .where(BatchDraftJob.id == UUID(batch_job_id))
+        .values(
+            completed_emails=completed_expr,
+            status=status_expr,
+        )
+    )
+    await db.flush()
 
 
 async def _update_batch_job_failed(db: AsyncSession, batch_job_id: str | None) -> None:
@@ -374,13 +383,20 @@ async def _update_batch_job_failed(db: AsyncSession, batch_job_id: str | None) -
     if not batch_job_id:
         return
 
-    result = await db.execute(
-        select(BatchDraftJob).where(BatchDraftJob.id == UUID(batch_job_id))
+    failed_expr = BatchDraftJob.failed_emails + 1
+    status_expr = case(
+        (
+            BatchDraftJob.completed_emails + failed_expr >= BatchDraftJob.total_emails,
+            "completed",
+        ),
+        else_=BatchDraftJob.status,
     )
-    batch_job = result.scalar_one_or_none()
-
-    if batch_job:
-        batch_job.failed_emails += 1
-        if batch_job.completed_emails + batch_job.failed_emails >= batch_job.total_emails:
-            batch_job.status = "completed"  # Still mark completed, frontend shows partial success
-        await db.flush()
+    await db.execute(
+        update(BatchDraftJob)
+        .where(BatchDraftJob.id == UUID(batch_job_id))
+        .values(
+            failed_emails=failed_expr,
+            status=status_expr,
+        )
+    )
+    await db.flush()
