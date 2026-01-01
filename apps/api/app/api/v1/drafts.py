@@ -226,8 +226,8 @@ async def reject_draft(
 async def regenerate_draft(
     draft_id: UUID,
     current_user: CurrentUser,
+    request: Request,
     custom_prompt: str | None = Body(None, embed=True),
-    request: Request | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     """Regenerate draft with optional custom prompt."""
@@ -257,7 +257,7 @@ async def regenerate_draft(
     from app.models.user_settings import UserSettings
     from app.services.openrouter_service import EmailContext, OpenRouterService
 
-    if custom_prompt is None and request is not None:
+    if custom_prompt is None:
         custom_prompt = request.query_params.get("custom_prompt")
 
     settings_result = await db.execute(
