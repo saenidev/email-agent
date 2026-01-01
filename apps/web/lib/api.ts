@@ -94,3 +94,10 @@ export const settingsApi = {
   update: (data: any) => api.put("/settings", data),
   getModels: () => api.get<{ id: string; name: string }[]>("/settings/models"),
 };
+
+export const activityApi = {
+  list: (page = 1, pageSize = 50, type?: string) =>
+    api.get(
+      `/activity?page=${page}&page_size=${pageSize}${type ? `&type=${type}` : ""}`
+    ),
+};

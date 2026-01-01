@@ -1,7 +1,20 @@
 "use client";
 
-import { Activity, Mail, FileEdit, Send, Filter, Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Activity,
+  Mail,
+  FileEdit,
+  Send,
+  Filter,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Link2,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { activityApi } from "@/lib/api";
 
 const activityConfig: Record<
   string,
@@ -17,6 +30,16 @@ const activityConfig: Record<
     color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     label: "Draft Created",
   },
+  draft_approved: {
+    icon: CheckCircle2,
+    color: "bg-success/10 text-success",
+    label: "Draft Approved",
+  },
+  draft_rejected: {
+    icon: XCircle,
+    color: "bg-destructive/10 text-destructive",
+    label: "Draft Rejected",
+  },
   email_sent: {
     icon: Send,
     color: "bg-success/10 text-success",
@@ -27,35 +50,17 @@ const activityConfig: Record<
     color: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
     label: "Rule Matched",
   },
+  gmail_connected: {
+    icon: Link2,
+    color: "bg-green-500/10 text-green-600 dark:text-green-400",
+    label: "Gmail Connected",
+  },
+  settings_changed: {
+    icon: Settings,
+    color: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+    label: "Settings Changed",
+  },
 };
-
-// Mock data - will be replaced with API call
-const mockActivity = [
-  {
-    id: "1",
-    activity_type: "email_received",
-    description: "Received email from john@example.com",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    activity_type: "draft_created",
-    description: "AI drafted response for email from john@example.com",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "3",
-    activity_type: "email_sent",
-    description: "Sent approved response to john@example.com",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: "4",
-    activity_type: "rule_matched",
-    description: "Rule 'VIP Senders' matched for email from ceo@company.com",
-    created_at: new Date(Date.now() - 10800000).toISOString(),
-  },
-];
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -73,8 +78,13 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export default function ActivityPage() {
-  // TODO: Replace with actual API call
-  const activities = mockActivity;
+  const { data, isLoading } = useQuery({
+    queryKey: ["activity"],
+    queryFn: () => activityApi.list(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const activities = data?.data?.activities || [];
 
   return (
     <div className="max-w-4xl">
@@ -89,7 +99,12 @@ export default function ActivityPage() {
       </div>
 
       {/* Content */}
-      {activities.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+          <p>Loading activity...</p>
+        </div>
+      ) : activities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="h-16 w-16 rounded-2xl bg-accent flex items-center justify-center mb-4">
             <Activity className="h-8 w-8 text-muted-foreground" />

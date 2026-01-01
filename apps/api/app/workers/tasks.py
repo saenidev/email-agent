@@ -13,6 +13,7 @@ from app.models.draft import Draft
 from app.models.email import Email
 from app.models.gmail_token import GmailToken
 from app.models.user import User
+from app.services.activity_service import log_activity
 from app.services.email_processor import create_email_processor, get_user_settings
 from app.services.gmail_service import GmailService
 from app.services.openrouter_service import EmailContext, OpenRouterService
@@ -203,6 +204,17 @@ async def send_approved_draft(ctx: dict, draft_id: str) -> dict:
 
             draft.status = "sent"
             draft.sent_at = datetime.now(timezone.utc)
+
+            # Log activity
+            await log_activity(
+                db,
+                user_id=draft.user_id,
+                activity_type="email_sent",
+                description=f"Sent email to {', '.join(draft.to_emails)}",
+                email_id=draft.email_id,
+                draft_id=draft.id,
+            )
+
             await db.commit()
 
             return {"status": "success", "draft_id": draft_id}
@@ -329,6 +341,17 @@ async def generate_draft_for_email(
                 llm_reasoning=response.reasoning,
             )
             db.add(draft)
+            await db.flush()
+
+            # Log activity
+            await log_activity(
+                db,
+                user_id=email.user_id,
+                activity_type="draft_created",
+                description=f"AI drafted response for email from {email.from_email}",
+                email_id=email.id,
+                draft_id=draft.id,
+            )
 
             # Update batch job progress
             await _update_batch_job_completed(db, batch_job_id)

@@ -11,6 +11,7 @@ from app.models.draft import Draft
 from app.models.email import Email
 from app.models.user import User
 from app.models.user_settings import UserSettings
+from app.services.activity_service import log_activity
 from app.services.gmail_service import EmailMessage, GmailService
 from app.services.openrouter_service import EmailContext, OpenRouterService
 from app.services.rule_engine import Rule, RuleAction, RuleEngine
@@ -306,6 +307,23 @@ class EmailProcessor:
         self.db.add(draft)
         await self.db.flush()
         await self.db.refresh(draft)
+
+        # Log activity
+        activity_type = "email_sent" if status == "auto_sent" else "draft_created"
+        description = (
+            f"Auto-sent response to {email.from_email}"
+            if status == "auto_sent"
+            else f"AI drafted response for email from {email.from_email}"
+        )
+        await log_activity(
+            self.db,
+            user_id=self.user_id,
+            activity_type=activity_type,
+            description=description,
+            email_id=email_record.id,
+            draft_id=draft.id,
+            rule_id=UUID(matched_rule.id) if matched_rule else None,
+        )
 
         return draft
 

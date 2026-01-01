@@ -13,6 +13,7 @@ from app.models.draft import Draft
 from app.models.email import Email
 from app.schemas.draft import DraftDetail, DraftList, DraftSummary, DraftUpdate
 from app.schemas.email import EmailSummary
+from app.services.activity_service import log_activity
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -166,6 +167,16 @@ async def approve_draft(
     draft.reviewed_at = datetime.now(timezone.utc)
     await db.flush()
 
+    # Log activity
+    await log_activity(
+        db,
+        user_id=current_user.id,
+        activity_type="draft_approved",
+        description=f"Approved draft response to {', '.join(draft.to_emails)}",
+        email_id=draft.email_id,
+        draft_id=draft.id,
+    )
+
     # Enqueue send task
     from arq import create_pool
     from arq.connections import RedisSettings
@@ -218,6 +229,16 @@ async def reject_draft(
     draft.status = "rejected"
     draft.reviewed_at = datetime.now(timezone.utc)
     await db.flush()
+
+    # Log activity
+    await log_activity(
+        db,
+        user_id=current_user.id,
+        activity_type="draft_rejected",
+        description=f"Rejected draft response to {', '.join(draft.to_emails)}",
+        email_id=draft.email_id,
+        draft_id=draft.id,
+    )
 
     return {"status": "rejected", "draft_id": str(draft_id)}
 
