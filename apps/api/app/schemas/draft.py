@@ -11,6 +11,7 @@ class DraftSummary(BaseModel):
     email_id: UUID
     to_emails: list[str]
     subject: str
+    body_text: str
     status: str
     llm_model_used: str | None
     created_at: datetime
