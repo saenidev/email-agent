@@ -5,8 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
   RefreshCw,
-  Mail,
-  MailOpen,
   Inbox,
   Sparkles,
   Loader2,
@@ -265,18 +263,24 @@ export default function EmailsPage() {
             <div
               key={email.id}
               className={cn(
-                "group px-3 py-2.5 transition-colors hover:bg-accent cursor-pointer",
+                "group relative px-4 py-3 transition-all duration-150 cursor-pointer",
+                "hover:bg-accent/50",
                 !email.is_read && "bg-primary/[0.02]",
-                index !== 0 && "border-t border-border",
-                isSelected(email.id) && "bg-primary/[0.05]"
+                index !== 0 && "border-t border-border/60",
+                isSelected(email.id) && "bg-primary/[0.06]"
               )}
               onClick={() => showUnrepliedOnly && toggleEmail(email.id)}
             >
+              {/* Unread indicator - left bar style */}
+              {!email.is_read && (
+                <span className="absolute left-0 top-3 bottom-3 w-[3px] bg-primary rounded-full" />
+              )}
+
               <div className="flex items-start gap-3">
                 {/* Checkbox - only show in unreplied mode */}
                 {showUnrepliedOnly && (
                   <div
-                    className="pt-0.5"
+                    className="pt-0.5 shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleEmail(email.id);
@@ -286,34 +290,20 @@ export default function EmailsPage() {
                   </div>
                 )}
 
-                {/* Icon */}
-                <div
-                  className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                    email.is_read
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-primary/10 text-primary"
-                  )}
-                >
-                  {email.is_read ? (
-                    <MailOpen className="h-4 w-4" />
-                  ) : (
-                    <Mail className="h-4 w-4" />
-                  )}
-                </div>
-
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-4">
-                    <p
-                      className={cn(
-                        "text-sm truncate",
-                        !email.is_read && "font-medium"
-                      )}
-                    >
-                      {email.from_name || email.from_email}
-                    </p>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p
+                        className={cn(
+                          "text-sm truncate",
+                          !email.is_read ? "font-semibold text-foreground" : "text-muted-foreground"
+                        )}
+                      >
+                        {email.from_name || email.from_email}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                       {email.received_at &&
                         formatDistanceToNow(new Date(email.received_at), {
                           addSuffix: true,
@@ -322,23 +312,18 @@ export default function EmailsPage() {
                   </div>
                   <p
                     className={cn(
-                      "text-sm truncate",
+                      "text-sm truncate mt-0.5",
                       !email.is_read
                         ? "font-medium text-foreground"
-                        : "text-muted-foreground"
+                        : "text-foreground/80"
                     )}
                   >
                     {email.subject}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  <p className="text-xs text-muted-foreground truncate mt-1 leading-relaxed">
                     {email.snippet}
                   </p>
                 </div>
-
-                {/* Unread indicator */}
-                {!email.is_read && (
-                  <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
-                )}
               </div>
             </div>
           ))}

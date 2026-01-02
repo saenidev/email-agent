@@ -108,10 +108,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex flex-col gap-1 p-3">
-          <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Navigation
-          </p>
+        <nav className="flex flex-col gap-0.5 p-3">
           {navigation.map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
@@ -119,22 +116,20 @@ export default function DashboardLayout({
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
+                  "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
                   isActive
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                <div
-                  className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                    isActive
-                      ? "bg-primary-foreground/20"
-                      : "bg-muted group-hover:bg-background"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                </div>
+                {/* Active indicator bar */}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-full" />
+                )}
+                <item.icon className={cn(
+                  "h-4 w-4 shrink-0",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                )} />
                 {item.name}
               </Link>
             );
@@ -146,15 +141,13 @@ export default function DashboardLayout({
           {/* Dark mode toggle */}
           <button
             onClick={toggleDarkMode}
-            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-150"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
-              {darkMode ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </div>
+            {darkMode ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
             {darkMode ? "Light Mode" : "Dark Mode"}
           </button>
 
@@ -163,11 +156,9 @@ export default function DashboardLayout({
           {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-150"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
-              <LogOut className="h-4 w-4" />
-            </div>
+            <LogOut className="h-4 w-4" />
             Sign Out
           </button>
         </div>
