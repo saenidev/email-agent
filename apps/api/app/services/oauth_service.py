@@ -1,5 +1,7 @@
 """Gmail OAuth2 service for handling authentication flow."""
 
+import functools
+
 import anyio
 from google_auth_oauthlib.flow import Flow
 
@@ -43,7 +45,7 @@ def get_authorization_url(state: str | None = None) -> str:
 async def exchange_code_for_tokens(code: str) -> dict:
     """Exchange authorization code for access and refresh tokens."""
     flow = get_flow()
-    await anyio.to_thread.run_sync(flow.fetch_token, code=code)
+    await anyio.to_thread.run_sync(functools.partial(flow.fetch_token, code=code))
 
     credentials = flow.credentials
     return {
