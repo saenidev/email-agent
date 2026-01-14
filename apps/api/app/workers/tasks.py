@@ -64,10 +64,11 @@ async def poll_emails_for_user(ctx: dict, user_id: str) -> dict:
                         max_results=20,
                     )
             else:
-                # Full sync - get recent unread messages
+                # Full sync - get recent inbox messages (not just unread)
+                # This ensures initial sync populates emails even if all are read
                 messages = await gmail_service.list_messages_async(
-                    query="is:inbox is:unread",
-                    max_results=20,
+                    query="is:inbox",
+                    max_results=50,
                 )
 
             if user.gmail_token.history_id is None:
