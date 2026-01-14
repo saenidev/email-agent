@@ -93,6 +93,8 @@ export const settingsApi = {
   get: () => api.get("/settings"),
   update: (data: any) => api.put("/settings", data),
   getModels: () => api.get<{ id: string; name: string }[]>("/settings/models"),
+  testGuardrails: (content: string, confidence = 1.0) =>
+    api.post("/settings/guardrails/test", { content, confidence }),
 };
 
 export const activityApi = {

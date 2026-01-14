@@ -15,6 +15,10 @@ class DraftSummary(BaseModel):
     status: str
     llm_model_used: str | None
     created_at: datetime
+    # Guardrail tracking
+    guardrail_flagged: bool
+    guardrail_violations: str | None
+    llm_confidence: float | None
 
     model_config = {"from_attributes": True}
 
@@ -37,6 +41,10 @@ class DraftDetail(BaseModel):
     original_body_text: str | None
     edited_by_user: bool
     original_email: EmailSummary | None = None
+    # Guardrail tracking
+    guardrail_flagged: bool
+    guardrail_violations: str | None
+    llm_confidence: float | None
 
     model_config = {"from_attributes": True}
 

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -57,6 +57,11 @@ class Draft(Base, UUIDMixin, TimestampMixin):
     # User modifications
     original_body_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     edited_by_user: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Guardrail tracking
+    guardrail_flagged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    guardrail_violations: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_confidence: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="drafts")

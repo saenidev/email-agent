@@ -14,6 +14,11 @@ from app.models.user import User
 from app.models.user_settings import UserSettings
 from app.services.activity_service import log_activity
 from app.services.gmail_service import EmailMessage, GmailService
+from app.services.guardrails_service import (
+    GuardrailConfig,
+    GuardrailsService,
+    ValidationResult,
+)
 from app.services.openrouter_service import EmailContext, OpenRouterService
 from app.services.rule_engine import Rule, RuleAction, RuleEngine
 
@@ -28,6 +33,7 @@ class ProcessingResult(str, Enum):
     FORWARDED = "forwarded"
     IGNORED = "ignored"
     NO_RESPONSE_NEEDED = "no_response_needed"
+    GUARDRAIL_BLOCKED = "guardrail_blocked"  # Downgraded to draft due to guardrails
     ERROR = "error"
 
 
@@ -128,11 +134,44 @@ class EmailProcessor:
                 temperature=float(settings.llm_temperature),
             )
 
-            # Step 4: Determine action based on settings and rules
+            # Step 4: Validate against guardrails
+            guardrails = self._create_guardrails_service(settings)
+            validation = guardrails.validate(
+                draft_response.body,
+                confidence=draft_response.confidence,
+            )
+
+            # Step 5: Determine action based on settings, rules, and guardrails
             should_auto_send = self._should_auto_send(
                 settings.approval_mode,
                 matched_rule,
             )
+
+            # If guardrails failed, always downgrade to draft
+            if should_auto_send and not validation.passed:
+                logger.warning(
+                    "Guardrails blocked auto-send for email %s: %s",
+                    email.gmail_id,
+                    validation.violation_summary,
+                )
+                await self._create_draft(
+                    email=email,
+                    body=draft_response.body,
+                    reasoning=draft_response.reasoning,
+                    model=settings.llm_model,
+                    matched_rule=matched_rule,
+                    status="pending",
+                    confidence=draft_response.confidence,
+                    guardrail_flagged=True,
+                    guardrail_violations=validation.violation_summary,
+                )
+
+                await self._update_email_status(
+                    email.gmail_id,
+                    is_processed=True,
+                    requires_response=True,
+                )
+                return ProcessingResult.GUARDRAIL_BLOCKED
 
             if should_auto_send:
                 # Auto-send the response
@@ -152,6 +191,7 @@ class EmailProcessor:
                     model=settings.llm_model,
                     matched_rule=matched_rule,
                     status="auto_sent",
+                    confidence=draft_response.confidence,
                 )
 
                 await self._update_email_status(
@@ -163,7 +203,7 @@ class EmailProcessor:
                 return ProcessingResult.AUTO_SENT
 
             else:
-                # Create draft for approval
+                # Create draft for approval (with guardrail info if any violations)
                 await self._create_draft(
                     email=email,
                     body=draft_response.body,
@@ -171,6 +211,9 @@ class EmailProcessor:
                     model=settings.llm_model,
                     matched_rule=matched_rule,
                     status="pending",
+                    confidence=draft_response.confidence,
+                    guardrail_flagged=not validation.passed,
+                    guardrail_violations=validation.violation_summary if not validation.passed else None,
                 )
 
                 await self._update_email_status(
@@ -242,6 +285,18 @@ class EmailProcessor:
 
         return settings.system_prompt
 
+    def _create_guardrails_service(self, settings: UserSettings) -> GuardrailsService:
+        """Create a GuardrailsService from user settings."""
+        config = GuardrailConfig(
+            profanity_filter_enabled=settings.guardrail_profanity_enabled,
+            pii_filter_enabled=settings.guardrail_pii_enabled,
+            commitment_filter_enabled=settings.guardrail_commitment_enabled,
+            custom_keywords_enabled=settings.guardrail_custom_keywords_enabled,
+            confidence_threshold=float(settings.guardrail_confidence_threshold),
+            custom_blocked_keywords=settings.guardrail_blocked_keywords or [],
+        )
+        return GuardrailsService(config)
+
     async def _update_email_status(
         self,
         gmail_id: str,
@@ -274,6 +329,9 @@ class EmailProcessor:
         model: str,
         matched_rule: Rule | None,
         status: str,
+        confidence: float | None = None,
+        guardrail_flagged: bool = False,
+        guardrail_violations: str | None = None,
     ) -> Draft:
         """Create a draft in the database."""
         # First get the email record
@@ -312,6 +370,9 @@ class EmailProcessor:
             llm_reasoning=reasoning,
             matched_rule_id=UUID(matched_rule.id) if matched_rule else None,
             sent_at=sent_at,
+            llm_confidence=confidence,
+            guardrail_flagged=guardrail_flagged,
+            guardrail_violations=guardrail_violations,
         )
 
         self.db.add(draft)

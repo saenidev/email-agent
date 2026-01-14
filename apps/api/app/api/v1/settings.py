@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,8 +7,36 @@ from app.db.session import get_db
 from app.dependencies import CurrentUser
 from app.models.user_settings import UserSettings
 from app.schemas.settings import UserSettingsResponse, UserSettingsUpdate
+from app.services.guardrails_service import (
+    GuardrailConfig,
+    GuardrailsService,
+    ViolationType,
+)
 
 router = APIRouter()
+
+
+class GuardrailTestRequest(BaseModel):
+    """Request to test guardrails against sample content."""
+
+    content: str
+    confidence: float = 1.0
+
+
+class GuardrailViolationResponse(BaseModel):
+    """A single guardrail violation."""
+
+    violation_type: str
+    matched_text: str
+    description: str
+
+
+class GuardrailTestResponse(BaseModel):
+    """Response from guardrail test."""
+
+    passed: bool
+    violations: list[GuardrailViolationResponse]
+    should_downgrade_to_draft: bool
 
 
 @router.get("", response_model=UserSettingsResponse)
@@ -73,3 +102,54 @@ async def list_available_models() -> list[dict[str, str]]:
         {"id": "allenai/olmo-3.1-32b-think:free", "name": "AllenAI: Olmo 3.1 32B Think (Free)"},
         {"id": "meta-llama/llama-3.3-70b-instruct:free", "name": "Meta: Llama 3.3 70B Instruct"},
     ]
+
+
+@router.post("/guardrails/test", response_model=GuardrailTestResponse)
+async def test_guardrails(
+    request: GuardrailTestRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> GuardrailTestResponse:
+    """
+    Test guardrails against sample content.
+
+    This endpoint allows users to validate their guardrail settings
+    by testing against sample email content without actually sending.
+    """
+    # Get user settings
+    result = await db.execute(select(UserSettings).where(UserSettings.user_id == current_user.id))
+    settings = result.scalar_one_or_none()
+
+    if not settings:
+        # Use defaults if no settings exist
+        settings = UserSettings(user_id=current_user.id)
+
+    # Create guardrails service from settings
+    config = GuardrailConfig(
+        profanity_filter_enabled=settings.guardrail_profanity_enabled,
+        pii_filter_enabled=settings.guardrail_pii_enabled,
+        commitment_filter_enabled=settings.guardrail_commitment_enabled,
+        custom_keywords_enabled=settings.guardrail_custom_keywords_enabled,
+        confidence_threshold=float(settings.guardrail_confidence_threshold),
+        custom_blocked_keywords=settings.guardrail_blocked_keywords or [],
+    )
+    guardrails = GuardrailsService(config)
+
+    # Run validation
+    validation = guardrails.validate(request.content, confidence=request.confidence)
+
+    # Convert to response
+    violations = [
+        GuardrailViolationResponse(
+            violation_type=v.violation_type.value,
+            matched_text=v.matched_text,
+            description=v.description,
+        )
+        for v in validation.violations
+    ]
+
+    return GuardrailTestResponse(
+        passed=validation.passed,
+        violations=violations,
+        should_downgrade_to_draft=validation.should_downgrade_to_draft,
+    )

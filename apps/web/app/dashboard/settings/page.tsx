@@ -15,6 +15,11 @@ import {
   Zap,
   Bot,
   MessageSquare,
+  ShieldAlert,
+  XCircle,
+  Plus,
+  X,
+  TestTube,
 } from "lucide-react";
 import { settingsApi, gmailApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -30,6 +35,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const approvalModes = [
   {
@@ -60,6 +68,11 @@ function SettingsContent() {
   // Local state for text inputs (debounced saving)
   const [systemPrompt, setSystemPrompt] = useState("");
   const [signature, setSignature] = useState("");
+  const [newKeyword, setNewKeyword] = useState("");
+  const [blockedKeywords, setBlockedKeywords] = useState<string[]>([]);
+  const [testContent, setTestContent] = useState("");
+  const [testResult, setTestResult] = useState<any>(null);
+  const [isTestingGuardrails, setIsTestingGuardrails] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: settings, isLoading } = useQuery({
@@ -72,6 +85,7 @@ function SettingsContent() {
     if (settings?.data) {
       setSystemPrompt(settings.data.system_prompt || "");
       setSignature(settings.data.signature || "");
+      setBlockedKeywords(settings.data.guardrail_blocked_keywords || []);
     }
   }, [settings?.data]);
 
@@ -133,6 +147,36 @@ function SettingsContent() {
     if (confirm("Disconnect Gmail? The agent will stop processing emails.")) {
       await gmailApi.disconnect();
       refetchGmail();
+    }
+  };
+
+  const handleAddKeyword = () => {
+    const trimmed = newKeyword.trim();
+    if (trimmed && !blockedKeywords.includes(trimmed)) {
+      const updated = [...blockedKeywords, trimmed];
+      setBlockedKeywords(updated);
+      updateMutation.mutate({ guardrail_blocked_keywords: updated });
+      setNewKeyword("");
+    }
+  };
+
+  const handleRemoveKeyword = (keyword: string) => {
+    const updated = blockedKeywords.filter((k) => k !== keyword);
+    setBlockedKeywords(updated);
+    updateMutation.mutate({ guardrail_blocked_keywords: updated });
+  };
+
+  const handleTestGuardrails = async () => {
+    if (!testContent.trim()) return;
+    setIsTestingGuardrails(true);
+    setTestResult(null);
+    try {
+      const result = await settingsApi.testGuardrails(testContent, 0.8);
+      setTestResult(result.data);
+    } catch {
+      setTestResult({ error: "Failed to test guardrails" });
+    } finally {
+      setIsTestingGuardrails(false);
     }
   };
 
@@ -370,6 +414,241 @@ Example: Always be concise and professional. Sign off with just my first name. N
             <p className="text-xs text-muted-foreground mt-2">
               This signature will be appended to all AI-generated emails
             </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Guardrails */}
+      <section className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldAlert className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Content Guardrails</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Guardrails prevent auto-sending emails that contain sensitive content. When violations are detected, emails are downgraded to drafts for manual review.
+        </p>
+
+        <Card className="mb-4">
+          <CardContent className="p-4 space-y-4">
+            {/* Profanity Filter */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="profanity-filter" className="text-sm font-medium">
+                  Profanity Filter
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Block emails containing offensive language
+                </p>
+              </div>
+              <Switch
+                id="profanity-filter"
+                checked={currentSettings?.guardrail_profanity_enabled ?? true}
+                onCheckedChange={(checked) =>
+                  updateMutation.mutate({ guardrail_profanity_enabled: checked })
+                }
+              />
+            </div>
+
+            {/* PII Filter */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="pii-filter" className="text-sm font-medium">
+                  PII Protection
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Detect credit cards, SSNs, passwords, and API keys
+                </p>
+              </div>
+              <Switch
+                id="pii-filter"
+                checked={currentSettings?.guardrail_pii_enabled ?? true}
+                onCheckedChange={(checked) =>
+                  updateMutation.mutate({ guardrail_pii_enabled: checked })
+                }
+              />
+            </div>
+
+            {/* Commitment Filter */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="commitment-filter" className="text-sm font-medium">
+                  Commitment Detection
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Flag binding language like &quot;I agree&quot;, &quot;confirmed&quot;, &quot;I&apos;ll pay&quot;
+                </p>
+              </div>
+              <Switch
+                id="commitment-filter"
+                checked={currentSettings?.guardrail_commitment_enabled ?? true}
+                onCheckedChange={(checked) =>
+                  updateMutation.mutate({ guardrail_commitment_enabled: checked })
+                }
+              />
+            </div>
+
+            {/* Confidence Threshold */}
+            <div className="pt-2 border-t">
+              <div className="flex items-center justify-between mb-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Confidence Threshold</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Minimum AI confidence to auto-send
+                  </p>
+                </div>
+                <span className="font-mono text-xs font-medium bg-muted px-2 py-1 rounded-md">
+                  {currentSettings?.guardrail_confidence_threshold ?? 0.7}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={currentSettings?.guardrail_confidence_threshold ?? 0.7}
+                onChange={(e) =>
+                  updateMutation.mutate({
+                    guardrail_confidence_threshold: parseFloat(e.target.value),
+                  })
+                }
+                className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                <span>More permissive</span>
+                <span>More strict</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Custom Keywords */}
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Custom Blocked Keywords</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add your own words or phrases to block
+                </p>
+              </div>
+              <Switch
+                checked={currentSettings?.guardrail_custom_keywords_enabled ?? true}
+                onCheckedChange={(checked) =>
+                  updateMutation.mutate({ guardrail_custom_keywords_enabled: checked })
+                }
+              />
+            </div>
+
+            <div className="flex gap-2 mb-3">
+              <Input
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddKeyword()}
+                placeholder="Add a keyword..."
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddKeyword}
+                disabled={!newKeyword.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {blockedKeywords.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {blockedKeywords.map((keyword) => (
+                  <Badge
+                    key={keyword}
+                    variant="secondary"
+                    className="flex items-center gap-1 pr-1"
+                  >
+                    {keyword}
+                    <button
+                      onClick={() => handleRemoveKeyword(keyword)}
+                      className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">
+                No custom keywords added
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Test Guardrails */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TestTube className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Test Your Guardrails</Label>
+            </div>
+            <Textarea
+              value={testContent}
+              onChange={(e) => setTestContent(e.target.value)}
+              placeholder="Enter sample email content to test against your guardrails..."
+              rows={3}
+              className="resize-none mb-3"
+            />
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestGuardrails}
+                disabled={!testContent.trim() || isTestingGuardrails}
+              >
+                {isTestingGuardrails ? (
+                  <>
+                    <LoadingSpinner className="h-4 w-4 mr-2" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <TestTube className="h-4 w-4 mr-2" />
+                    Test Content
+                  </>
+                )}
+              </Button>
+              {testResult && !testResult.error && (
+                <div className="flex items-center gap-2">
+                  {testResult.passed ? (
+                    <Badge variant="default" className="bg-success">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Passed
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      {testResult.violations?.length || 0} violation(s)
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Show violations */}
+            {testResult && !testResult.passed && testResult.violations?.length > 0 && (
+              <div className="mt-3 p-3 bg-destructive/10 rounded-lg">
+                <p className="text-xs font-medium text-destructive mb-2">
+                  Detected violations:
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {testResult.violations.map((v: any, i: number) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <XCircle className="h-3 w-3 text-destructive mt-0.5 shrink-0" />
+                      <span>{v.description}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>

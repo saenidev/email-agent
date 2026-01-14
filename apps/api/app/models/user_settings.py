@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
@@ -50,6 +50,28 @@ class UserSettings(Base, UUIDMixin, TimestampMixin):
     # Notification preferences
     notify_on_draft: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notify_on_auto_send: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Guardrail settings
+    guardrail_profanity_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    guardrail_pii_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    guardrail_commitment_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    guardrail_custom_keywords_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    guardrail_confidence_threshold: Mapped[Decimal] = mapped_column(
+        Numeric(3, 2),
+        default=Decimal("0.70"),
+        nullable=False,
+    )
+    guardrail_blocked_keywords: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String), nullable=True
+    )
 
     # Relationship
     user: Mapped["User"] = relationship(back_populates="settings")
