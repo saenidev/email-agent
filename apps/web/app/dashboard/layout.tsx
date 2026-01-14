@@ -90,12 +90,12 @@ export default function DashboardLayout({
         )}
       >
         {/* Logo section */}
-        <div className="flex h-14 items-center justify-between px-4 border-b border-border">
-          <Link href="/dashboard" className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Mail className="h-4 w-4" />
+        <div className="flex h-16 items-center justify-between px-4 border-b border-border/50">
+          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
+              <Mail className="h-4.5 w-4.5" />
             </div>
-            <span className="text-base font-semibold">Email Agent</span>
+            <span className="text-base font-semibold tracking-tight">Email Agent</span>
           </Link>
           <Button
             variant="ghost"
@@ -108,27 +108,30 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex flex-col gap-0.5 p-3">
-          {navigation.map((item) => {
+        <nav className="flex flex-col gap-1 p-3">
+          {navigation.map((item, index) => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
+                  "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-accent/80 hover:text-foreground hover:translate-x-0.5"
                 )}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                {/* Active indicator bar */}
+                {/* Active indicator bar with glow */}
                 {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-full" />
+                  <>
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-primary rounded-full shadow-[0_0_8px_rgba(var(--primary),0.4)]" />
+                  </>
                 )}
                 <item.icon className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                  "h-4 w-4 shrink-0 transition-transform duration-200",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground group-hover:scale-110"
                 )} />
                 {item.name}
               </Link>
@@ -137,11 +140,11 @@ export default function DashboardLayout({
         </nav>
 
         {/* Bottom section */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border bg-card">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border/50 bg-card/80 backdrop-blur-sm">
           {/* Dark mode toggle */}
           <button
             onClick={toggleDarkMode}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-150"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-all duration-200"
           >
             {darkMode ? (
               <Sun className="h-4 w-4" />
@@ -151,12 +154,12 @@ export default function DashboardLayout({
             {darkMode ? "Light Mode" : "Dark Mode"}
           </button>
 
-          <Separator className="my-2" />
+          <Separator className="my-2 opacity-50" />
 
           {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-150"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
           >
             <LogOut className="h-4 w-4" />
             Sign Out

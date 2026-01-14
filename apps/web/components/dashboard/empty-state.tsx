@@ -19,16 +19,22 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center py-12 text-center",
+        "flex flex-col items-center justify-center py-16 text-center animate-fade-in",
         className
       )}
     >
-      <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center mb-4">
-        <Icon className="h-6 w-6 text-muted-foreground" />
+      {/* Layered icon container with subtle depth */}
+      <div className="relative mb-6">
+        {/* Outer glow ring */}
+        <div className="absolute inset-0 h-16 w-16 rounded-2xl bg-primary/5 blur-xl" />
+        {/* Icon container with gradient border effect */}
+        <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center shadow-soft border border-border/50">
+          <Icon className="h-7 w-7 text-muted-foreground/70" />
+        </div>
       </div>
-      <h3 className="text-base font-medium mb-1">{title}</h3>
-      <p className="text-muted-foreground text-sm max-w-sm">{description}</p>
-      {action && <div className="mt-4">{action}</div>}
+      <h3 className="text-lg font-semibold mb-2 text-foreground/90">{title}</h3>
+      <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">{description}</p>
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }

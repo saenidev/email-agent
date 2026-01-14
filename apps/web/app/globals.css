@@ -211,9 +211,27 @@
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.2s ease-out forwards;
+  opacity: 0;
+  animation: fade-in-up 0.25s ease-out forwards;
 }
 
 .animate-slide-in-right {
   animation: slide-in-right 0.15s ease-out forwards;
+}
+
+/* Staggered list animation support */
+@keyframes list-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-list-item {
+  opacity: 0;
+  animation: list-item-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

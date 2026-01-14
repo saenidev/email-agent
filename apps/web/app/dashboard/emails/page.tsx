@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { emailsApi, BatchDraftJobStatus } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { useEmailSelection } from "@/hooks/useEmailSelection";
 import { PageHeader, EmptyState, LoadingSpinner } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
@@ -263,17 +263,19 @@ export default function EmailsPage() {
             <div
               key={email.id}
               className={cn(
-                "group relative px-4 py-3 transition-all duration-150 cursor-pointer",
-                "hover:bg-accent/50",
-                !email.is_read && "bg-primary/[0.02]",
-                index !== 0 && "border-t border-border/60",
-                isSelected(email.id) && "bg-primary/[0.06]"
+                "group relative px-4 py-3 transition-all duration-200 cursor-pointer",
+                "hover:bg-accent/60 hover:shadow-sm",
+                !email.is_read && "bg-primary/[0.03]",
+                index !== 0 && "border-t border-border/50",
+                isSelected(email.id) && "bg-primary/[0.08] ring-1 ring-primary/20",
+                "animate-fade-in-up"
               )}
+              style={{ animationDelay: `${Math.min(index * 25, 250)}ms` }}
               onClick={() => showUnrepliedOnly && toggleEmail(email.id)}
             >
-              {/* Unread indicator - left bar style */}
+              {/* Unread indicator - animated left bar */}
               {!email.is_read && (
-                <span className="absolute left-0 top-3 bottom-3 w-[3px] bg-primary rounded-full" />
+                <span className="absolute left-0 top-3 bottom-3 w-[3px] bg-primary rounded-full transition-transform group-hover:scale-y-110" />
               )}
 
               <div className="flex items-start gap-3">
@@ -321,7 +323,7 @@ export default function EmailsPage() {
                     {email.subject}
                   </p>
                   <p className="text-xs text-muted-foreground truncate mt-1 leading-relaxed">
-                    {email.snippet}
+                    {decodeHtmlEntities(email.snippet)}
                   </p>
                 </div>
               </div>
