@@ -218,6 +218,9 @@ CONFIDENCE: [0.0 to 1.0]"""
 
         if context.user_signature:
             prompt += f"\n\nPlease end the email with this signature:\n{context.user_signature}"
+        else:
+            # When no signature is configured, instruct LLM to use a simple closing
+            prompt += "\n\nNo signature is configured. End the email with just 'Best,' on its own line (no name placeholder)."
 
         return prompt
 

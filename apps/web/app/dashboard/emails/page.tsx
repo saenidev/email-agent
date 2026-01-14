@@ -15,6 +15,8 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
+  Mail,
 } from "lucide-react";
 import { emailsApi, BatchDraftJobStatus } from "@/lib/api";
 import { cn, decodeHtmlEntities } from "@/lib/utils";
@@ -24,6 +26,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type SortField = "date" | "sender" | "subject";
 type SortDirection = "asc" | "desc";
@@ -55,6 +64,9 @@ export default function EmailsPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
+
+  // Email preview state
+  const [previewEmail, setPreviewEmail] = useState<any | null>(null);
 
   // Fetch emails (either all or unreplied)
   const { data, isLoading, refetch, isFetching } = useQuery({
@@ -193,6 +205,9 @@ export default function EmailsPage() {
   };
 
   const toggleSort = (field: SortField) => {
+    // Clear selection when sort changes to avoid confusion about what's selected
+    deselectAll();
+
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -443,7 +458,13 @@ export default function EmailsPage() {
                 "animate-fade-in-up"
               )}
               style={{ animationDelay: `${Math.min(index * 25, 250)}ms` }}
-              onClick={() => showUnrepliedOnly && handleEmailToggle(email.id)}
+              onClick={() => {
+                if (showUnrepliedOnly) {
+                  handleEmailToggle(email.id);
+                } else {
+                  setPreviewEmail(email);
+                }
+              }}
             >
               {/* Unread indicator - animated left bar */}
               {!email.is_read && (
@@ -508,7 +529,13 @@ export default function EmailsPage() {
       {!isLoading && totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalEmails)} of {totalEmails} emails
+            {searchQuery ? (
+              // When searching, show filtered count (client-side filtering)
+              <>Showing {emails.length} of {totalEmails} emails</>
+            ) : (
+              // When not searching, show server pagination info
+              <>Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalEmails)} of {totalEmails} emails</>
+            )}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -561,6 +588,76 @@ export default function EmailsPage() {
           </div>
         </div>
       )}
+
+      {/* Email Preview Dialog */}
+      <Dialog open={!!previewEmail} onOpenChange={(open) => !open && setPreviewEmail(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-4 pr-8">
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg font-semibold leading-tight">
+                  {previewEmail?.subject || "(No subject)"}
+                </DialogTitle>
+                <DialogDescription className="mt-2 flex flex-col gap-1">
+                  <span className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 shrink-0" />
+                    <span className="font-medium text-foreground">
+                      {previewEmail?.from_name || previewEmail?.from_email}
+                    </span>
+                    {previewEmail?.from_name && (
+                      <span className="text-muted-foreground">
+                        &lt;{previewEmail?.from_email}&gt;
+                      </span>
+                    )}
+                  </span>
+                  {previewEmail?.received_at && (
+                    <span className="text-xs">
+                      {formatDistanceToNow(new Date(previewEmail.received_at), { addSuffix: true })}
+                    </span>
+                  )}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto mt-4 -mx-6 px-6">
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {previewEmail?.snippet ? decodeHtmlEntities(previewEmail.snippet) : "No preview available"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-4 italic">
+                This is a preview snippet. Open in Gmail to view the full email.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+            {previewEmail?.gmail_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  window.open(
+                    `https://mail.google.com/mail/u/0/#inbox/${previewEmail.gmail_id}`,
+                    "_blank"
+                  );
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open in Gmail
+              </Button>
+            )}
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setPreviewEmail(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -414,6 +414,12 @@ Example: Always be concise and professional. Sign off with just my first name. N
             <p className="text-xs text-muted-foreground mt-2">
               This signature will be appended to all AI-generated emails
             </p>
+            {!signature.trim() && (
+              <p className="text-xs text-amber-500 mt-2 flex items-center gap-1">
+                <span>💡</span>
+                <span>Tip: Add your name and contact info here so AI drafts include a proper signature.</span>
+              </p>
+            )}
           </CardContent>
         </Card>
       </section>
