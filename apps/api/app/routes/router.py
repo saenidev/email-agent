@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import activity, auth, drafts, emails, gmail, rules, settings
+from app.routes.v1 import activity, auth, drafts, emails, gmail, rules, settings
 
 api_router = APIRouter()
 
