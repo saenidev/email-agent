@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Inbox,
   FileEdit,
@@ -37,16 +37,12 @@ export default function DashboardLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Initialize dark mode from localStorage/system preference
-  const [darkMode, setDarkMode] = useState(() => {
-    // SSR guard - return false during server rendering
-    if (typeof window === 'undefined') return false;
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return savedTheme === "dark" || (!savedTheme && prefersDark);
-  });
+  // Initialize dark mode with null to prevent hydration mismatch
+  // null = not yet determined (during SSR and initial client render)
+  const [darkMode, setDarkMode] = useState<boolean | null>(null);
+  const darkModeInitialized = useRef(false);
 
-  // Auth check and apply dark mode class to DOM
+  // Auth check and initialize dark mode from localStorage on client only
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -54,13 +50,34 @@ export default function DashboardLayout({
       return;
     }
 
-    // Apply dark mode class based on state
+    // Initialize dark mode from localStorage/system preference (only once)
+    if (!darkModeInitialized.current) {
+      darkModeInitialized.current = true;
+      const savedTheme = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const shouldBeDark = savedTheme === "dark" || (!savedTheme && prefersDark);
+      // Apply immediately to avoid flash
+      if (shouldBeDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: initializing state from localStorage on mount
+      setDarkMode(shouldBeDark);
+    }
+  }, [router]);
+
+  // Apply dark mode class to DOM when darkMode changes (user toggles)
+  useEffect(() => {
+    // Skip if not initialized yet or first initialization (already handled above)
+    if (darkMode === null || !darkModeInitialized.current) return;
+
     if (darkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, [router, darkMode]);
+  }, [darkMode]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -152,12 +169,13 @@ export default function DashboardLayout({
             onClick={toggleDarkMode}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-all duration-200"
           >
-            {darkMode ? (
+            {/* Always render Moon icon during SSR (darkMode === null) to prevent hydration mismatch */}
+            {darkMode === true ? (
               <Sun className="h-4 w-4" />
             ) : (
               <Moon className="h-4 w-4" />
             )}
-            {darkMode ? "Light Mode" : "Dark Mode"}
+            {darkMode === true ? "Light Mode" : "Dark Mode"}
           </button>
 
           <Separator className="my-2 opacity-50" />
