@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,15 +52,7 @@ export function EditDraftModal({
   const [showOriginal, setShowOriginal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when draft changes (handles switching between drafts)
-  useEffect(() => {
-    setToEmails(draft.to_emails.join(", "));
-    setCcEmails(draft.cc_emails?.join(", ") || "");
-    setSubject(draft.subject);
-    setBodyText(draft.body_text);
-    setShowOriginal(false);
-    setError(null);
-  }, [draft.id, draft.to_emails, draft.cc_emails, draft.subject, draft.body_text]);
+  // Note: Form state resets automatically when parent uses key={draft.id}
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {

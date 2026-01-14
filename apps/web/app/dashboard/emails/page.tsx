@@ -28,6 +28,19 @@ import { Input } from "@/components/ui/input";
 type SortField = "date" | "sender" | "subject";
 type SortDirection = "asc" | "desc";
 
+interface SortIconProps {
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+}
+
+function SortIcon({ field, sortField, sortDirection }: SortIconProps) {
+  if (sortField !== field) return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
+  return sortDirection === "asc"
+    ? <ArrowUp className="h-3.5 w-3.5" />
+    : <ArrowDown className="h-3.5 w-3.5" />;
+}
+
 export default function EmailsPage() {
   const queryClient = useQueryClient();
   const [showUnrepliedOnly, setShowUnrepliedOnly] = useState(false);
@@ -106,17 +119,21 @@ export default function EmailsPage() {
     isSelected,
   } = useEmailSelection(emails);
 
-  // Clear selection and reset page when switching modes
-  useEffect(() => {
+  // Handler for toggling unreplied filter - clears selection and resets page
+  const handleToggleUnreplied = () => {
     deselectAll();
     setCurrentPage(1);
-  }, [showUnrepliedOnly, deselectAll]);
+    setShowUnrepliedOnly(prev => !prev);
+  };
 
-  useEffect(() => {
+  // Clear selection error when under limit - computed in handlers instead of useEffect
+  const handleEmailToggle = (emailId: string) => {
+    toggleEmail(emailId);
+    // Clear error when selection changes and is now under limit
     if (selectionError && selectedCount <= 20) {
       setSelectionError(null);
     }
-  }, [selectedCount, selectionError]);
+  };
 
   // Mutation for generating drafts
   const generateDraftsMutation = useMutation({
@@ -184,13 +201,6 @@ export default function EmailsPage() {
     }
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
-    return sortDirection === "asc"
-      ? <ArrowUp className="h-3.5 w-3.5" />
-      : <ArrowDown className="h-3.5 w-3.5" />;
-  };
-
   const batchJobData = batchStatus?.data as BatchDraftJobStatus | undefined;
   const isJobActive =
     batchJobId &&
@@ -212,7 +222,7 @@ export default function EmailsPage() {
             <Button
               variant={showUnrepliedOnly ? "default" : "secondary"}
               size="sm"
-              onClick={() => setShowUnrepliedOnly(!showUnrepliedOnly)}
+              onClick={handleToggleUnreplied}
             >
               {showUnrepliedOnly ? "Unreplied Only" : "All Emails"}
             </Button>
@@ -266,7 +276,7 @@ export default function EmailsPage() {
               onClick={() => toggleSort("date")}
             >
               Date
-              <SortIcon field="date" />
+              <SortIcon field="date" sortField={sortField} sortDirection={sortDirection} />
             </Button>
             <Button
               variant={sortField === "sender" ? "secondary" : "ghost"}
@@ -275,7 +285,7 @@ export default function EmailsPage() {
               onClick={() => toggleSort("sender")}
             >
               Sender
-              <SortIcon field="sender" />
+              <SortIcon field="sender" sortField={sortField} sortDirection={sortDirection} />
             </Button>
             <Button
               variant={sortField === "subject" ? "secondary" : "ghost"}
@@ -284,7 +294,7 @@ export default function EmailsPage() {
               onClick={() => toggleSort("subject")}
             >
               Subject
-              <SortIcon field="subject" />
+              <SortIcon field="subject" sortField={sortField} sortDirection={sortDirection} />
             </Button>
           </div>
 
@@ -433,7 +443,7 @@ export default function EmailsPage() {
                 "animate-fade-in-up"
               )}
               style={{ animationDelay: `${Math.min(index * 25, 250)}ms` }}
-              onClick={() => showUnrepliedOnly && toggleEmail(email.id)}
+              onClick={() => showUnrepliedOnly && handleEmailToggle(email.id)}
             >
               {/* Unread indicator - animated left bar */}
               {!email.is_read && (
@@ -447,7 +457,7 @@ export default function EmailsPage() {
                     className="pt-0.5 shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleEmail(email.id);
+                      handleEmailToggle(email.id);
                     }}
                   >
                     <Checkbox checked={isSelected(email.id)} />

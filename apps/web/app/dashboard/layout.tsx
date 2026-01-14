@@ -36,25 +36,31 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
 
+  // Initialize dark mode from localStorage/system preference
+  const [darkMode, setDarkMode] = useState(() => {
+    // SSR guard - return false during server rendering
+    if (typeof window === 'undefined') return false;
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return savedTheme === "dark" || (!savedTheme && prefersDark);
+  });
+
+  // Auth check and apply dark mode class to DOM
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
+      return;
     }
 
-    // Check for saved theme preference or system preference
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setDarkMode(true);
+    // Apply dark mode class based on state
+    if (darkMode) {
       document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
     }
-  }, [router]);
+  }, [router, darkMode]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);

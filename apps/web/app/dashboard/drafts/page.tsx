@@ -211,9 +211,10 @@ export default function DraftsPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - key resets state when switching drafts */}
       {editingDraft && (
         <EditDraftModal
+          key={editingDraft.id}
           draft={editingDraft}
           open={!!editingDraft}
           onOpenChange={(open) => !open && setEditingDraft(null)}
