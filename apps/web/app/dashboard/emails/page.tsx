@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -9,6 +9,12 @@ import {
   Sparkles,
   Loader2,
   X,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { emailsApi, BatchDraftJobStatus } from "@/lib/api";
 import { cn, decodeHtmlEntities } from "@/lib/utils";
@@ -17,6 +23,10 @@ import { PageHeader, EmptyState, LoadingSpinner } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+
+type SortField = "date" | "sender" | "subject";
+type SortDirection = "asc" | "desc";
 
 export default function EmailsPage() {
   const queryClient = useQueryClient();
@@ -24,14 +34,68 @@ export default function EmailsPage() {
   const [batchJobId, setBatchJobId] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState<string | null>(null);
 
+  // Search and sort state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
   // Fetch emails (either all or unreplied)
   const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["emails", showUnrepliedOnly ? "unreplied" : "all"],
+    queryKey: ["emails", showUnrepliedOnly ? "unreplied" : "all", currentPage],
     queryFn: () =>
-      showUnrepliedOnly ? emailsApi.listUnreplied() : emailsApi.list(),
+      showUnrepliedOnly
+        ? emailsApi.listUnreplied(currentPage, pageSize)
+        : emailsApi.list(currentPage, pageSize),
   });
 
-  const emails = data?.data?.emails || [];
+  // Get pagination info from response
+  const totalEmails = data?.data?.total || 0;
+  const totalPages = Math.ceil(totalEmails / pageSize);
+
+  const rawEmails = data?.data?.emails || [];
+
+  // Filter and sort emails
+  const emails = useMemo(() => {
+    let filtered = rawEmails;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((email: any) =>
+        (email.from_name?.toLowerCase().includes(query)) ||
+        (email.from_email?.toLowerCase().includes(query)) ||
+        (email.subject?.toLowerCase().includes(query)) ||
+        (email.snippet?.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
+          break;
+        case "sender":
+          const senderA = (a.from_name || a.from_email || "").toLowerCase();
+          const senderB = (b.from_name || b.from_email || "").toLowerCase();
+          comparison = senderA.localeCompare(senderB);
+          break;
+        case "subject":
+          comparison = (a.subject || "").toLowerCase().localeCompare((b.subject || "").toLowerCase());
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [rawEmails, searchQuery, sortField, sortDirection]);
   const {
     selectedIds,
     selectedCount,
@@ -42,9 +106,10 @@ export default function EmailsPage() {
     isSelected,
   } = useEmailSelection(emails);
 
-  // Clear selection when switching modes
+  // Clear selection and reset page when switching modes
   useEffect(() => {
     deselectAll();
+    setCurrentPage(1);
   }, [showUnrepliedOnly, deselectAll]);
 
   useEffect(() => {
@@ -110,6 +175,22 @@ export default function EmailsPage() {
     }
   };
 
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection(field === "date" ? "desc" : "asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
+    return sortDirection === "asc"
+      ? <ArrowUp className="h-3.5 w-3.5" />
+      : <ArrowDown className="h-3.5 w-3.5" />;
+  };
+
   const batchJobData = batchStatus?.data as BatchDraftJobStatus | undefined;
   const isJobActive =
     batchJobId &&
@@ -149,6 +230,72 @@ export default function EmailsPage() {
           </div>
         }
       />
+
+      {/* Search and Filter Bar */}
+      <div className="mb-4 space-y-3">
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search emails by sender, subject, or content..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-10"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Sort Controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Sort by:</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={sortField === "date" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2.5 text-xs gap-1.5"
+              onClick={() => toggleSort("date")}
+            >
+              Date
+              <SortIcon field="date" />
+            </Button>
+            <Button
+              variant={sortField === "sender" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2.5 text-xs gap-1.5"
+              onClick={() => toggleSort("sender")}
+            >
+              Sender
+              <SortIcon field="sender" />
+            </Button>
+            <Button
+              variant={sortField === "subject" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2.5 text-xs gap-1.5"
+              onClick={() => toggleSort("subject")}
+            >
+              Subject
+              <SortIcon field="subject" />
+            </Button>
+          </div>
+
+          {/* Results count */}
+          {(searchQuery || rawEmails.length !== emails.length) && (
+            <span className="text-xs text-muted-foreground ml-auto">
+              {emails.length} of {rawEmails.length} emails
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* Selection Bar - appears when emails selected */}
       {selectedCount > 0 && (
@@ -236,12 +383,27 @@ export default function EmailsPage() {
         <LoadingSpinner className="py-16" label="Loading emails..." />
       ) : emails.length === 0 ? (
         <EmptyState
-          icon={Inbox}
-          title={showUnrepliedOnly ? "All caught up!" : "No emails yet"}
+          icon={searchQuery ? Search : Inbox}
+          title={
+            searchQuery
+              ? "No emails found"
+              : showUnrepliedOnly
+                ? "All caught up!"
+                : "No emails yet"
+          }
           description={
-            showUnrepliedOnly
-              ? "You have responded to all your emails"
-              : "Connect Gmail in Settings and sync to see your emails here"
+            searchQuery
+              ? `No emails match "${searchQuery}". Try a different search.`
+              : showUnrepliedOnly
+                ? "You have responded to all your emails"
+                : "Connect Gmail in Settings and sync to see your emails here"
+          }
+          action={
+            searchQuery ? (
+              <Button variant="outline" size="sm" onClick={() => setSearchQuery("")}>
+                Clear search
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -330,6 +492,64 @@ export default function EmailsPage() {
             </div>
           ))}
         </Card>
+      )}
+
+      {/* Pagination Controls */}
+      {!isLoading && totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalEmails)} of {totalEmails} emails
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1 || isFetching}
+              className="gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "ghost"}
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={isFetching}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages || isFetching}
+              className="gap-1"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
